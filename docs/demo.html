@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ManteniTrack demo</title>
+<style>
+/* Plan: página de prueba = columna de explicación + teléfono con la app.
+   Dentro del teléfono se replica el tema real de la app (AppTheme / AppColors). */
+:root {
+  --page-bg: #eef0f4;
+  --page-ink: #1c1f26;
+  --page-mute: #5b6170;
+  --page-line: #d7dae2;
+  --page-card: #ffffff;
+  --accent: #2563eb;
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page-bg: #0c0e13; --page-ink: #eceef3; --page-mute: #9aa1b2; --page-line: #262a35; --page-card: #151821;
+    --accent: #5b8cff; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page-bg: #0c0e13; --page-ink: #eceef3; --page-mute: #9aa1b2; --page-line: #262a35; --page-card: #151821;
+  --accent: #5b8cff; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--page-bg); color: var(--page-ink); font-family: var(--font-ui); }
+button, input, textarea, select { font: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.stage { min-height: 100%; display: grid; grid-template-columns: minmax(260px, 380px) auto; gap: 40px; justify-content: center; align-items: center; padding: 24px; }
+.info { display: grid; gap: 18px; max-width: 380px; }
+.info h1 { font-size: 26px; line-height: 1.15; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+.info p { margin: 0; color: var(--page-mute); line-height: 1.55; font-size: 14.5px; }
+.tag { justify-self: start; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--page-line); border-radius: 99px; padding: 4px 10px; background: var(--page-card); }
+.tries { background: var(--page-card); border: 1px solid var(--page-line); border-radius: 14px; padding: 16px 18px; display: grid; gap: 10px; }
+.tries h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--page-mute); }
+.tries ol { margin: 0; padding-left: 20px; display: grid; gap: 7px; font-size: 14px; line-height: 1.45; }
+.tries code { font-size: 12.5px; background: color-mix(in srgb, var(--accent) 10%, transparent); padding: 1px 5px; border-radius: 5px; }
+.info-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.page-btn { border: 1px solid var(--page-line); background: var(--page-card); color: var(--page-ink); border-radius: 10px; padding: 9px 14px; cursor: pointer; font-weight: 600; font-size: 13.5px; }
+.page-btn:hover { border-color: var(--accent); }
+.where { font-size: 12.5px; color: var(--page-mute); }
+.where b { color: var(--page-ink); }
+
+.phone { min-width: 0; width: 390px; height: min(820px, calc(100vh - 48px)); min-height: 640px; border-radius: 44px; padding: 10px; background: #0d0f14; box-shadow: 0 30px 60px -20px rgba(15, 23, 42, .45), inset 0 0 0 2px #2a2e38; }
+
+/* ── Tema de la app (copiado de AppColors) ── */
+.app {
+  --bg: #F8F7F4; --surface: #FFFFFF; --on: #1C1917; --primary: #2563EB;
+  --text-mid: #57534E; --text-soft: #A8A29E; --border: #E5E3DE; --border-strong: #D1CFC9; --surface-alt: #F3F2EF;
+  --fuel: #0891B2; --fuel-light: #ECFEFF; --fuel-border: #A5F3FC;
+  --danger: #DC2626; --danger-light: #FEF2F2; --danger-border: #FECACA;
+  --warning: #D97706; --warning-light: #FFFBEB; --warning-border: #FDE68A;
+  --ok: #16A34A; --ok-light: #F0FDF4; --ok-border: #BBF7D0;
+  --info-light: rgba(37, 99, 235, .07); --info-border: rgba(37, 99, 235, .25);
+  width: 100%; height: 100%; border-radius: 34px; overflow: hidden; position: relative;
+  background: var(--bg); color: var(--on); display: flex; flex-direction: column;
+  font-family: Roboto, system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px; color-scheme: light;
+}
+.app.dark {
+  --bg: #0F1117; --surface: #1A1D27; --on: #F1F0ED; --primary: #2563EB;
+  --text-mid: #9CA3AF; --text-soft: #6B7280; --border: #2E3244; --border-strong: #3D4460; --surface-alt: #252836;
+  --fuel: #06B6D4; --fuel-light: #0E3040; --fuel-border: #0E7490;
+  --danger: #F87171; --danger-light: #2D1515; --danger-border: #7F1D1D;
+  --warning: #FBBF24; --warning-light: #1C1400; --warning-border: #78350F;
+  --ok: #4ADE80; --ok-light: #052E16; --ok-border: #166534;
+  --info-light: rgba(91, 140, 255, .1); --info-border: rgba(91, 140, 255, .3);
+  color-scheme: dark;
+}
+.statusbar { height: 34px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 26px; font-size: 12.5px; font-weight: 600; background: var(--surface); }
+.screen { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg); }
+.appbar { flex: none; height: 54px; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.appbar h1 { font-size: 18px; font-weight: 800; margin: 0; flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.appbar.sub { padding-left: 4px; }
+.icon-btn { width: 40px; height: 40px; border-radius: 99px; border: 0; background: transparent; color: var(--on); cursor: pointer; display: grid; place-items: center; font-size: 18px; flex: none; }
+.icon-btn:hover { background: var(--surface-alt); }
+.icon-btn.on { color: var(--primary); background: var(--info-light); }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.center { justify-content: center; }
+.scroll > * { flex-shrink: 0; }
+.foot { flex: none; padding: 12px 16px 16px; border-top: 1px solid var(--border); background: var(--surface); display: grid; gap: 10px; }
+.row { display: flex; gap: 10px; align-items: center; }
+.row > .grow { flex: 1; min-width: 0; }
+.col { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+
+.logo { width: var(--s, 48px); height: var(--s, 48px); border-radius: calc(var(--s, 48px) * .22); background: linear-gradient(135deg, #2563EB, #7C3AED); display: grid; place-items: center; font-size: calc(var(--s, 48px) * .5); box-shadow: 0 4px 12px rgba(37, 99, 235, .3); flex: none; }
+.logo::after { content: "🔧"; filter: brightness(10); }
+.h-title { font-size: 26px; font-weight: 800; text-align: center; margin: 0; text-wrap: balance; }
+.h-sub { color: var(--text-mid); text-align: center; margin: 0; line-height: 1.5; }
+.step-title { font-size: 22px; font-weight: 800; margin: 0; text-wrap: balance; }
+.step-sub { color: var(--text-mid); margin: 0; line-height: 1.4; }
+
+.label { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-soft); margin-bottom: 6px; display: block; }
+.field { display: flex; flex-direction: column; }
+.input { width: 100%; height: 48px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--on); padding: 0 14px; font-size: 15px; outline: none; }
+.input:focus { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+.input.bad { border-color: var(--danger); }
+.input-wrap { position: relative; }
+.input-wrap .suffix { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--text-soft); font-size: 13px; pointer-events: none; }
+.input-wrap .eye { position: absolute; right: 4px; top: 4px; }
+.err { color: var(--danger); font-size: 12px; margin-top: 5px; min-height: 0; }
+.err:empty { display: none; }
+.help { color: var(--text-soft); font-size: 12px; margin-top: 5px; line-height: 1.4; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.btn { height: 50px; border-radius: 10px; border: 1px solid transparent; background: var(--primary); color: #fff; font-weight: 700; font-size: 15px; cursor: pointer; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 0 16px; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.outline { background: var(--surface); color: var(--on); border-color: var(--border-strong); }
+.btn.ghost { background: transparent; color: var(--text-mid); }
+.btn.green { background: var(--ok); }
+.btn.purple { background: #7C3AED; }
+.btn.small { height: 36px; font-size: 13px; width: auto; }
+.link { background: none; border: 0; color: var(--primary); font-weight: 700; cursor: pointer; padding: 6px; font-size: 13.5px; }
+.spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 16px; }
+button.card { text-align: left; width: 100%; color: var(--on); cursor: pointer; font: inherit; }
+button.card:hover { border-color: var(--border-strong); }
+.banner { border-radius: 10px; padding: 11px 12px; border: 1px solid; font-size: 13px; line-height: 1.45; display: flex; gap: 8px; }
+.banner.error { background: var(--danger-light); border-color: var(--danger-border); color: var(--danger); }
+.banner.ok { background: var(--ok-light); border-color: var(--ok-border); color: var(--ok); }
+.banner.info { background: var(--surface-alt); border-color: var(--border); color: var(--primary); }
+.badge { font-size: 11px; font-weight: 700; border-radius: 20px; padding: 3px 10px; border: 1px solid; white-space: nowrap; }
+.t-ok { background: var(--ok-light); color: var(--ok); border-color: var(--ok-border); }
+.t-warning { background: var(--warning-light); color: var(--warning); border-color: var(--warning-border); }
+.t-danger { background: var(--danger-light); color: var(--danger); border-color: var(--danger-border); }
+.t-fuel { background: var(--fuel-light); color: var(--fuel); border-color: var(--fuel-border); }
+.t-info { background: var(--info-light); color: var(--primary); border-color: var(--info-border); }
+.t-neutral { background: var(--surface-alt); color: var(--text-mid); border-color: var(--border); }
+.chip { font-size: 12px; border-radius: 7px; padding: 4px 8px; border: 1px solid; font-weight: 500; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { height: 34px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--on); cursor: pointer; font-size: 13.5px; font-weight: 500; }
+.pill.sel { background: color-mix(in srgb, var(--primary) 14%, var(--surface)); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+
+.dots { display: flex; justify-content: center; gap: 8px; }
+.dots i { height: 8px; width: 8px; border-radius: 99px; background: var(--border); transition: width .25s; }
+.dots i.on { width: 24px; background: var(--primary); }
+.slide { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px; padding: 0 30px; text-align: center; }
+.slide .em { font-size: 72px; }
+
+.vcard { display: grid; gap: 12px; }
+.vhead { display: flex; gap: 12px; align-items: flex-start; }
+.vname { font-weight: 800; font-size: 16px; }
+.vsub { color: var(--text-mid); font-size: 13px; margin-top: 2px; }
+.score { text-align: right; flex: none; }
+.score b { font-size: 22px; font-weight: 800; display: block; font-variant-numeric: tabular-nums; }
+.score span { font-size: 11px; color: var(--text-soft); }
+.vstate { border-radius: 10px; padding: 9px 12px; border: 1px solid; font-weight: 600; font-size: 13px; }
+.section { display: flex; justify-content: space-between; align-items: baseline; margin-top: 4px; }
+.section h2 { margin: 0; font-size: 18px; font-weight: 800; }
+.section span { color: var(--text-soft); font-size: 13px; }
+.alert-row { display: flex; gap: 8px; align-items: center; padding: 7px 0; cursor: pointer; background: none; border: 0; width: 100%; color: var(--on); text-align: left; font: inherit; font-size: 13px; }
+.alert-row .grow { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.alert-row .grow em { font-style: normal; color: var(--text-mid); }
+.workshop { border-radius: 14px; padding: 18px; background: linear-gradient(90deg, #1E3A5F, #312E81); color: #fff; }
+.workshop small { color: #93C5FD; font-size: 11px; font-weight: 700; letter-spacing: .08em; }
+.workshop b { display: block; font-size: 20px; margin: 4px 0 2px; }
+.workshop span { color: #93C5FD; font-size: 14px; }
+.fab { position: absolute; right: 18px; bottom: 22px; height: 54px; border-radius: 16px; border: 0; background: color-mix(in srgb, var(--primary) 18%, var(--surface)); color: var(--primary); font-weight: 700; padding: 0 18px; display: flex; align-items: center; gap: 8px; cursor: pointer; box-shadow: 0 6px 16px rgba(0, 0, 0, .18); font-size: 14.5px; }
+.empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding: 30px; }
+.empty .em { font-size: 52px; }
+.empty h3 { margin: 0; font-size: 18px; }
+.empty p { margin: 0 0 8px; color: var(--text-mid); line-height: 1.5; }
+.menu { position: absolute; right: 10px; top: 92px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, .18); padding: 6px; z-index: 6; }
+.menu button { display: block; width: 100%; text-align: left; padding: 10px 16px; border: 0; background: none; color: var(--on); cursor: pointer; border-radius: 8px; font: inherit; }
+.menu button:hover { background: var(--surface-alt); }
+
+.progress { padding: 0 16px 10px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.progress .row { justify-content: space-between; font-size: 12px; color: var(--text-soft); margin-bottom: 6px; }
+.progress .row b { color: var(--primary); }
+.bar { height: 5px; border-radius: 99px; background: var(--surface-alt); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--primary); border-radius: 99px; transition: width .25s; }
+.types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.opt { border: 1px solid var(--border); background: var(--surface); border-radius: 14px; cursor: pointer; color: var(--on); font: inherit; }
+.opt.sel { border: 2px solid var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+.opt.compact { aspect-ratio: 1 / .95; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--text-mid); }
+.opt.compact.sel { color: var(--primary); }
+.opt.compact span { font-size: 28px; }
+.opt.wide { display: flex; gap: 12px; align-items: center; padding: 14px; text-align: left; width: 100%; }
+.opt.wide .em { font-size: 24px; }
+.opt.wide b { display: block; font-size: 15px; }
+.opt.wide small { color: var(--text-mid); font-size: 12.5px; line-height: 1.35; }
+.opt.wide.sel b { color: var(--primary); }
+.spec-row { display: grid; gap: 4px; }
+
+.sheet-scrim, .dialog-scrim { position: absolute; inset: 0; background: rgba(0, 0, 0, .35); z-index: 8; display: flex; align-items: flex-end; }
+.dialog-scrim { align-items: center; justify-content: center; padding: 24px; }
+.sheet { width: 100%; background: var(--surface); border-radius: 22px 22px 0 0; padding: 10px 20px 22px; display: grid; gap: 12px; max-height: 88%; overflow-y: auto; }
+.sheet .handle { width: 36px; height: 4px; border-radius: 2px; background: var(--border-strong); justify-self: center; }
+.dialog { background: var(--surface); border-radius: 22px; padding: 22px; display: grid; gap: 12px; width: 100%; }
+.dialog h3 { margin: 0; font-size: 19px; }
+.dialog p { margin: 0; color: var(--text-mid); line-height: 1.5; }
+.dialog .row { justify-content: flex-end; }
+.toast { position: absolute; left: 14px; right: 14px; bottom: 18px; z-index: 9; background: #323232; color: #fff; padding: 14px 16px; border-radius: 10px; font-size: 14px; box-shadow: 0 6px 18px rgba(0, 0, 0, .25); }
+.kmlog { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-soft); }
+.kmlog b { color: var(--on); font-weight: 600; }
+
+.tabs { flex: none; position: sticky; top: 0; z-index: 3; display: flex; gap: 2px; overflow-x: auto; background: var(--surface); border-bottom: 1px solid var(--border); border-top: 1px solid var(--border); padding: 0 8px; scrollbar-width: none; }
+.tab { border: 0; background: none; padding: 12px 10px; font: inherit; font-size: 13.5px; font-weight: 500; color: var(--text-mid); white-space: nowrap; border-bottom: 2px solid transparent; cursor: pointer; }
+.tab.on { color: var(--primary); font-weight: 700; border-bottom-color: var(--primary); }
+.tabbody { flex: none; padding: 16px; display: grid; gap: 10px; }
+#dscroll > * { flex: none; }
+.stats { display: flex; gap: 8px; }
+.stat { flex: 1; min-width: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 8px 6px; text-align: center; }
+.stat small { display: block; font-size: 9.5px; color: var(--text-soft); font-weight: 700; letter-spacing: .04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stat b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+.hbanner { display: flex; justify-content: space-between; gap: 8px; width: 100%; border: 1px solid; border-radius: 12px; padding: 11px 14px; font: inherit; font-weight: 700; font-size: 13px; cursor: pointer; text-align: left; }
+.icard { display: grid; gap: 8px; padding: 12px 14px; }
+.pbar { height: 6px; border-radius: 99px; background: var(--surface-alt); overflow: hidden; }
+.pbar i { display: block; height: 100%; border-radius: 99px; }
+.znote { background: var(--warning-light); border: 1px solid var(--warning-border); color: var(--warning); border-radius: 8px; padding: 7px 10px; font-size: 12px; }
+.tsec { margin: 6px 0 0; font-size: 15px; font-weight: 800; }
+.help b { font-size: 13px; color: var(--text-mid); }
+.help p { margin: 6px 0 4px; background: var(--surface-alt); border-radius: 8px; padding: 12px; font-size: 13px; line-height: 1.5; color: var(--text-mid); }
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 128px; margin-top: 12px; }
+.barcol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%; }
+.bar1 { width: 14px; display: flex; flex-direction: column; border-radius: 3px 3px 0 0; overflow: hidden; }
+.bar1 i { display: block; }
+.barcol small { font-size: 10px; color: var(--text-soft); }
+.srow { display: flex; gap: 10px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 13.5px; }
+.srow:last-child { border-bottom: 0; }
+.srow .grow { flex: 1; }
+.srow b { text-align: right; }
+select.input { appearance: auto; }
+.checkrow { display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 14px; border: 0; background: none; color: var(--on); font: inherit; cursor: pointer; }
+.cbox { width: 22px; height: 22px; flex: none; border-radius: 6px; border: 2px solid var(--border-strong); display: grid; place-items: center; color: #fff; font-size: 13px; font-weight: 800; }
+.cbox.on { background: var(--primary); border-color: var(--primary); }
+.qrbox { background: #fff; padding: 8px; border-radius: 14px; border: 1px solid var(--border); line-height: 0; }
+.code { font-size: 30px; font-weight: 800; letter-spacing: 4px; font-variant-numeric: tabular-nums; user-select: all; }
+.codeinput { text-align: center; font-size: 26px; font-weight: 800; letter-spacing: 6px; height: 56px; text-transform: uppercase; }
+.avatar { width: 38px; height: 38px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--surface-alt, var(--bg)); color: var(--text-mid); font-weight: 800; font-size: 13px; }
+.avatar.own { background: var(--ok-light); color: var(--ok); }
+.roleopt { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--on); font: inherit; text-align: left; cursor: pointer; }
+.roleopt.on { border: 2px solid var(--primary); background: color-mix(in srgb, var(--primary) 8%, var(--surface)); padding: 11px 13px; }
+.radio { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2px solid var(--border-strong); }
+.roleopt.on .radio { border: 6px solid var(--primary); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; }
+.seg button { height: 38px; border: 0; background: var(--surface); color: var(--on); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--border-strong); }
+.seg button.on { background: color-mix(in srgb, var(--primary) 14%, var(--surface)); color: var(--primary); font-weight: 700; }
+.est { height: 42px; display: flex; align-items: center; padding: 0 12px; border-radius: 10px; background: var(--surface-alt, var(--bg)); color: var(--text-mid); font-weight: 700; }
+.calc { background: var(--fuel-light) !important; color: var(--fuel) !important; font-weight: 700; }
+.switchrow { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: none; padding: 6px 0; color: var(--on); font: inherit; text-align: left; cursor: pointer; }
+.sw { width: 44px; height: 26px; flex: none; border-radius: 13px; background: var(--border-strong); position: relative; transition: background .15s; }
+.sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left .15s; }
+.sw.on { background: var(--fuel); }
+.sw.on::after { left: 21px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.thumb { position: relative; width: 52px; height: 52px; }
+.thumb img { width: 52px; height: 52px; object-fit: cover; border-radius: 8px; display: block; }
+.thumb button { position: absolute; top: -7px; right: -7px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: var(--danger); color: #fff; font-size: 11px; cursor: pointer; }
+.photos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.photos img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 10px; }
+label.pill { cursor: pointer; }
+label.pill:focus-within { outline: 2px solid var(--primary); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (max-width: 820px) {
+  .stage { grid-template-columns: minmax(0, 1fr); padding: 16px; gap: 18px; align-items: start; }
+  .info { max-width: none; }
+  .phone { width: 100%; max-width: 420px; justify-self: center; height: 760px; min-height: 0; }
+}
+@media (max-width: 460px) {
+  .phone { padding: 0; border-radius: 0; box-shadow: none; background: none; height: 100dvh; }
+  .app { border-radius: 0; }
+  .statusbar { display: none; }
+  .info { order: 2; }
+}
+</style>
+</head>
+<body>
+<main class="stage">
+  <section class="info" aria-label="Sobre esta demo">
+    <span class="tag">Demo · puntos 1 a 7</span>
+    <h1>Prueba el flujo de ManteniTrack</h1>
+    <p>Simula la app con datos de ejemplo: cuenta, inicio con avisos, alta de vehículos, detalle de cada vehículo, registro de mantenimientos y repostajes, y vehículos compartidos. No se conecta a Supabase ni a la IA, y lo que añadas se guarda solo en este navegador.</p>
+    <div class="tries">
+      <h2>Qué probar</h2>
+      <ol>
+        <li>Entra con la cuenta de ejemplo <code>demo@mantenitrak.app</code> / <code>demo1234</code>.</li>
+        <li>Pulsa un aviso de km para registrar una lectura (prueba un valor menor).</li>
+        <li>Activa el modo taller con el icono 🔧 de la barra.</li>
+        <li>Abre el Seat Ibiza: pestañas de estado, «¿Qué hacer?», combustible, gastos, historial y ficha.</li>
+        <li>En «¿Qué hacer?», pulsa «Ya está hecho»: marca más trabajos y añade una foto. Si no sabes el coste de cada uno, elige «Solo sé el total» y mira cómo se reparte.</li>
+        <li>En la pestaña de combustible, registra un repostaje: escribe dos importes del ticket (total y precio, por ejemplo) y se calcula el tercero.</li>
+        <li>Abre la Renault Kangoo de 2017: en el estado de la ITV verás que ya le toca cada año.</li>
+        <li>Comparte el Seat Ibiza (menú ⋮ → Compartir) y copia el código. Cierra sesión, crea otra cuenta y entra en «Unirme a un vehículo» con ese código.</li>
+        <li>Edita un vehículo (✏️) o elimínalo desde el menú ⋮.</li>
+        <li>Añade un vehículo: prueba un barco, un eléctrico o un diésel; las marcas incluyen la gama actual y modelos de hace años.</li>
+        <li>Crea una cuenta nueva y recupera la contraseña.</li>
+      </ol>
+    </div>
+    <div class="info-actions">
+      <button class="page-btn" id="reset-demo" type="button">Reiniciar demo</button>
+      <button class="page-btn" id="toggle-app-theme" type="button">Modo oscuro de la app</button>
+    </div>
+    <p class="where">Pantalla actual: <b id="where">—</b></p>
+  </section>
+  <div class="phone"><div class="app" id="app"></div></div>
+</main>
+
+<script>
+"use strict";
+/* ═══════════ Lógica de dominio (traducción de los .dart) ═══════════ */
+
+const TYPES = [
+  ["coche", "Coche", "🚗"], ["moto", "Moto", "🏍️"], ["camion", "Camión", "🚛"], ["autobus", "Autobús", "🚌"],
+  ["furgoneta", "Furgoneta", "🚐"], ["todoterreno", "4x4", "🚙"], ["caravana", "Caravana", "🚍"],
+  ["barco", "Barco", "⛵"], ["quad", "Quad", "🏎️"], ["otro", "Otro", "🚘"],
+];
+const typeOf = (id) => TYPES.find((t) => t[0] === id) || TYPES[9];
+
+const I = (id, name, icon, cat, km, mo) => ({ id, name, icon, cat, km, mo });
+const PLANS = {
+  car: [I("aceite", "Aceite del motor", "🛢️", "Motor", 10000, 12), I("filtro_aceite", "Filtro de aceite", "🔵", "Motor", 10000, 12),
+    I("filtro_aire", "Filtro de aire", "💨", "Motor", 20000, 24), I("filtro_combustible", "Filtro de combustible", "⛽", "Motor", 30000, 36),
+    I("bujias", "Bujías", "⚡", "Motor", 30000, null), I("correa_distribucion", "Correa de distribución", "🔧", "Motor", 80000, 60),
+    I("refrigerante", "Refrigerante", "🧊", "Motor", 60000, 48), I("filtro_habitaculo", "Filtro de habitáculo", "🌬️", "Habitáculo", 15000, 12),
+    I("frenos_delanteros", "Pastillas delanteras", "🔴", "Frenos", 30000, null), I("frenos_traseros", "Pastillas traseras", "🔴", "Frenos", 40000, null),
+    I("discos_delanteros", "Discos delanteros", "⚙️", "Frenos", 60000, null), I("liquido_frenos", "Líquido de frenos", "💧", "Frenos", null, 24),
+    I("neumaticos", "Neumáticos", "🔘", "Ruedas", 40000, 48), I("bateria", "Batería", "🔋", "Eléctrico", null, 48), I("itv", "ITV", "📋", "Legal", null, 24)],
+  moto: [I("aceite", "Aceite del motor", "🛢️", "Motor", 6000, 12), I("filtro_aceite", "Filtro de aceite", "🔵", "Motor", 6000, 12),
+    I("filtro_aire", "Filtro de aire", "💨", "Motor", 12000, 12), I("bujias", "Bujías", "⚡", "Motor", 12000, null),
+    I("cadena_lubricado", "Engrasar cadena", "⛓️", "Transmisión", 500, null), I("cadena_cambio", "Kit de arrastre", "⛓️", "Transmisión", 20000, null),
+    I("frenos_delanteros", "Pastillas delanteras", "🔴", "Frenos", 20000, null), I("frenos_traseros", "Pastillas traseras", "🔴", "Frenos", 15000, null),
+    I("liquido_frenos", "Líquido de frenos", "💧", "Frenos", null, 24), I("neumaticos", "Neumáticos", "🔘", "Ruedas", 15000, 36),
+    I("bateria", "Batería", "🔋", "Eléctrico", null, 36), I("itv", "ITV", "📋", "Legal", null, 24)],
+  truck: [I("aceite", "Aceite del motor", "🛢️", "Motor", 40000, 12), I("filtro_aceite", "Filtro de aceite", "🔵", "Motor", 40000, 12),
+    I("filtro_aire", "Filtro de aire", "💨", "Motor", 80000, 12), I("filtro_combustible", "Filtro de combustible", "⛽", "Motor", 40000, 12),
+    I("refrigerante", "Refrigerante", "🧊", "Motor", 100000, 36), I("correa_distribucion", "Correa de distribución", "🔧", "Motor", 200000, 60),
+    I("frenos", "Zapatas de freno", "🔴", "Frenos", 80000, null), I("liquido_frenos", "Líquido de frenos", "💧", "Frenos", null, 24),
+    I("neumaticos", "Neumáticos", "🔘", "Ruedas", 120000, 60), I("bateria", "Baterías", "🔋", "Eléctrico", null, 36),
+    I("tacografo", "Revisión del tacógrafo", "🗂️", "Legal", null, 24), I("itv", "ITV", "📋", "Legal", null, 12)],
+  boat: [I("aceite", "Aceite del motor", "🛢️", "Motor", null, 12), I("filtro_aceite", "Filtro de aceite", "🔵", "Motor", null, 12),
+    I("filtro_combustible", "Filtro de combustible", "⛽", "Motor", null, 24), I("anodos", "Ánodos de sacrificio", "🔩", "Casco", null, 12),
+    I("bateria", "Batería", "🔋", "Eléctrico", null, 36), I("revision_general", "Revisión general", "🧰", "General", null, 12)],
+};
+const ZONE_TYRE = { interior: 1, costa: .82, montana: .78, mixto: .92, norte: .85 };
+const r500 = (n) => Math.round(n / 500) * 500;
+
+function planFor(v) {
+  const t = v.type;
+  const base = (t === "moto" || t === "quad") ? PLANS.moto : (t === "camion" || t === "autobus") ? PLANS.truck : t === "barco" ? PLANS.boat : PLANS.car;
+  const fuel = (v.fuelType || "").toLowerCase(), usage = (v.usage || "").toLowerCase();
+  const ev = fuel.includes("eléctric"), diesel = fuel.includes("diés"), hybrid = fuel.includes("híbrid"), lpg = fuel.includes("glp");
+  const noEv = ["aceite", "filtro_aceite", "filtro_combustible", "bujias", "correa_distribucion"];
+  return base.filter((i) => !(ev && noEv.includes(i.id)) && !(diesel && i.id === "bujias")).map((i) => {
+    if ((i.id === "aceite" || i.id === "filtro_aceite") && i.km) {
+      let f = 1; if (hybrid) f *= 1.2; if (lpg) f *= .8; if (usage === "ciudad" || usage === "profesional") f *= .85;
+      return { ...i, km: r500(i.km * f) };
+    }
+    if (i.id === "neumaticos" && i.km) {
+      const z = ZONE_TYRE[v.zone] ?? 1; let f = z;
+      if (usage === "carretera") f *= .9; if (usage === "profesional") f *= .75;
+      return { ...i, km: r500(i.km * f), mo: z >= .85 ? i.mo : Math.round(i.mo * .875) };
+    }
+    return i;
+  });
+}
+
+const parseD = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const today0 = () => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); };
+const daysAgo = (n) => iso(new Date(today0().getTime() - n * 864e5));
+const dayDiff = (a, b) => Math.round((a - b) / 864e5);
+function addMonths(d, n) {
+  const t = new Date(d.getFullYear(), d.getMonth() + n, 1);
+  const last = new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate();
+  return new Date(t.getFullYear(), t.getMonth(), Math.min(d.getDate(), last));
+}
+const LABEL = { unknown: "Sin registrar", ok: "Al día", warning: "Próximo", danger: "Vencido" };
+
+/* ITV (RD 920/2017): la frecuencia depende del tipo y de la antigüedad. */
+const itvFirst = (t) => t === "furgoneta" ? 2 : (t === "camion" || t === "autobus") ? 1 : 4;
+function itvMonths(t, age) {
+  if (t === "moto" || t === "quad") return 24;
+  if (t === "furgoneta") return age < 6 ? 24 : age < 10 ? 12 : 6;
+  if (t === "camion") return age < 10 ? 12 : 6;
+  if (t === "autobus") return age < 5 ? 12 : 6;
+  if (t === "barco") return null;
+  return age < 10 ? 24 : 12;
+}
+function itvRule(t) {
+  if (t === "moto" || t === "quad") return "Primera a los 4 años y después cada 2 años.";
+  if (t === "furgoneta") return "Furgonetas de mercancías: primera a los 2 años; cada 2 años hasta los 6, cada año hasta los 10 y cada 6 meses después.";
+  if (t === "camion") return "Cada año hasta los 10 años y cada 6 meses después.";
+  if (t === "autobus") return "Cada año hasta los 5 años y cada 6 meses después.";
+  if (t === "barco") return "Las embarcaciones no pasan ITV.";
+  return "Primera a los 4 años; cada 2 años hasta los 10 y después cada año.";
+}
+function itvState(item, v, last, now) {
+  const rule = itvRule(v.type), year = Number(v.year) || 0;
+  if (!last) {
+    const span = itvFirst(v.type), first = year ? year + span : null;
+    if (first && now.getFullYear() < first) {
+      const el = Math.min(span, Math.max(0, now.getFullYear() - year));
+      return { item, status: "ok", progress: el / span * 0.5, hint: `Primera ITV en ${first} (${span} años desde la matriculación). ${rule}` };
+    }
+    return { item, status: "unknown", progress: 0, hint: rule };
+  }
+  const ld = parseD(last.date), age = year ? Math.max(0, ld.getFullYear() - year) : null;
+  const months = (age == null ? null : itvMonths(v.type, age)) ?? item.mo ?? 24;
+  const nextDate = addMonths(ld, months), p = Math.max(0, dayDiff(now, ld) / Math.max(1, dayDiff(nextDate, ld)));
+  const every = months % 12 === 0 ? (months === 12 ? "cada año" : `cada ${months / 12} años`) : `cada ${months} meses`;
+  return { item, status: p >= 1 ? "danger" : p >= .8 ? "warning" : "ok", progress: p, last, nextDate,
+    hint: age == null ? rule : `Con ${age === 1 ? "1 año" : age + " años"} le toca ${every}. ${rule}` };
+}
+
+function stateOf(item, v, now) {
+  let last = null;
+  for (const r of v.records) if (r.itemId === item.id && (!last || r.date > last.date)) last = r;
+  if (item.id === "itv") return itvState(item, v, last, now);
+  if (!last) return { item, status: "unknown", progress: 0 };
+  let byTime = null, byKm = null, nextDate = null, nextKm = null;
+  if (item.mo) { const ld = parseD(last.date); nextDate = addMonths(ld, item.mo); byTime = dayDiff(now, ld) / Math.max(1, dayDiff(nextDate, ld)); }
+  if (item.km && last.km != null) { nextKm = last.km + item.km; if (v.currentKm != null) byKm = (v.currentKm - last.km) / item.km; }
+  if (byTime == null && byKm == null) return { item, status: "unknown", progress: 0, last, nextKm };
+  const p = Math.max(0, byTime ?? 0, byKm ?? 0);
+  return { item, status: p >= 1 ? "danger" : p >= .8 ? "warning" : "ok", progress: p, last, nextKm, nextDate };
+}
+
+/* Un enchufable mide L/100 con la gasolina; un eléctrico, kWh/100. */
+const isEv = (f) => f.fuelType === "Electricidad";
+const forConsumption = (logs) => { const l = logs.filter((f) => !isEv(f)); return l.length ? l : logs; };
+const consUnit = (logs) => logs.length && logs.every(isEv) ? "kWh/100" : "L/100";
+function averageConsumption(logs) {
+  logs = forConsumption(logs);
+  const s = logs.filter((f) => f.km != null && f.liters != null).sort((a, b) => a.km - b.km);
+  let lastFull = null, pending = 0, L = 0, K = 0;
+  for (const f of s) {
+    if (lastFull == null) { if (f.full) lastFull = f.km; continue; }
+    pending += f.liters;
+    if (f.full) { const d = f.km - lastFull; if (d > 0) { L += pending; K += d; } pending = 0; lastFull = f.km; }
+  }
+  return K > 0 ? L / K * 100 : null;
+}
+function annualKm(v) {
+  if (v.kmLogs.length >= 2) {
+    const l = [...v.kmLogs].sort((a, b) => a.date.localeCompare(b.date));
+    const days = dayDiff(parseD(l.at(-1).date), parseD(l[0].date)), km = l.at(-1).km - l[0].km;
+    if (days >= 30 && km >= 0) return [Math.round(km / days * 365), true];
+  }
+  return [v.annualKm ?? 12000, false];
+}
+function healthOf(v) {
+  const now = today0();
+  const states = planFor(v).map((i) => stateOf(i, v, now));
+  const count = (s) => states.filter((x) => x.status === s).length;
+  const known = states.filter((x) => x.status !== "unknown").length;
+  const latest = v.kmLogs.map((l) => l.date).sort().at(-1);
+  const days = latest ? dayDiff(now, parseD(latest)) : null;
+  return {
+    states, danger: count("danger"), warning: count("warning"), ok: count("ok"),
+    pct: known ? Math.round(count("ok") / known * 100) : null,
+    alerts: states.filter((x) => x.status === "danger" || x.status === "warning").sort((a, b) => b.progress - a.progress),
+    avg: averageConsumption(v.fuelLogs), unit: consUnit(v.fuelLogs), kmDue: days == null || days > 30,
+  };
+}
+/* Punto 7: un vehículo compartido vive en la cuenta del propietario y
+   lleva la lista de personas con acceso (members). */
+const myVehicles = () => {
+  const own = account().vehicles;
+  const shared = Object.entries(DB.accounts).filter(([e]) => e !== S.user)
+    .flatMap(([, a]) => a.vehicles.filter((v) => (v.members || []).some((m) => m.email === S.user)));
+  return [...own, ...shared];
+};
+const ownerOf = (v) => Object.entries(DB.accounts).find(([, a]) => a.vehicles.includes(v));
+const accessOf = (v) => account().vehicles.includes(v) ? "owner" : ((v.members || []).find((m) => m.email === S.user)?.role || "regular");
+const isOwnerOf = (v) => accessOf(v) === "owner";
+const isWorkshop = (v) => isOwnerOf(v) ? v.ownerRole === "mechanic" : accessOf(v) === "mechanic";
+
+/* ── Formatos y validación (Fmt / Validators / VehicleDraft) ── */
+const thousands = (n) => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+const fmtKm = (n) => `${thousands(n)} km`;
+const MONTHS = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const fmtDate = (s) => { const d = parseD(s); return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
+const plural = (n, a, b) => `${n} ${n === 1 ? a : b}`;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const toInt = (v) => { const t = String(v).trim().replace(/[.\s]/g, ""); return /^\d+$/.test(t) ? Number(t) : null; };
+
+const V = {
+  email: (v) => !v.trim() ? "Introduce tu email" : !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()) ? "El email no es válido" : null,
+  password: (v) => !v ? "Introduce tu contraseña" : null,
+  newPassword: (v) => v.length < 8 ? "Mínimo 8 caracteres" : (!/[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]/.test(v) || !/\d/.test(v)) ? "Combina letras y números" : null,
+  name: (v) => !v.trim() ? "Introduce tu nombre" : null,
+  required: (v, what) => !v.trim() ? `Introduce ${what}` : null,
+  year: (v) => { const y = Number(v.trim()), max = new Date().getFullYear() + 1; return !/^\d{4}$/.test(v.trim()) ? "Introduce el año" : (y < 1900 || y > max) ? `Debe estar entre 1900 y ${max}` : null; },
+  currentKm: (v) => !v.trim() ? "Introduce los km que marca ahora" : toInt(v) == null ? "Escribe solo números" : toInt(v) > 3000000 ? "Parece demasiado. Revísalo" : null,
+  annualKm: (v) => !v.trim() ? null : toInt(v) == null ? "Escribe solo números" : toInt(v) > 500000 ? "Parece demasiado. Revísalo" : null,
+  liters: (v) => { if (!v.trim()) return null; const n = Number(v.replace(",", ".")); return (!isFinite(n) || n <= 0 || n > 60) ? "Número entre 0 y 60" : null; },
+};
+
+/* ── Catálogo (resumen de VehicleCatalog) ── */
+/* Generado desde lib/features/vehicles/domain/vehicle_catalog.dart */
+const CAT = {"car":{"Abarth":["500","595","695","500e","600e"],"Alfa Romeo":["MiTo","147","156","159","Giulietta","Brera","Giulia","Stelvio","Tonale","Junior"],"Alpine":["A110","A290","A390"],"Audi":["A1","A2","A3","A4","A4 Allroad","A5","A6","A6 Allroad","A7","A8","Q2","Q3","Q4 e-tron","Q5","Q6 e-tron","Q7","Q8","Q8 e-tron","A6 e-tron","e-tron","e-tron GT","TT","R8"],"BMW":["Serie 1","Serie 2","Serie 2 Active Tourer","Serie 2 Gran Coupé","Serie 3","Serie 4","Serie 5","Serie 6","Serie 7","Serie 8","X1","X2","X3","X4","X5","X6","X7","XM","Z4","i3","i4","i5","i7","iX","iX1","iX2","iX3"],"BYD":["Dolphin Surf","Dolphin","Dolphin G DM-i","Atto 2","Atto 2 DM-i","Atto 3","Atto 3 EVO","Seal","Seal 6 DM-i","Seal 6 DM-i Touring","Seal U","Seal U DM-i","Sealion 5","Sealion 7","Tang","Han"],"Chevrolet":["Matiz","Spark","Kalos","Aveo","Lacetti","Cruze","Epica","Orlando","Trax","Captiva"],"Chrysler":["PT Cruiser","300C","Voyager","Grand Voyager"],"Citroën":["Saxo","C1","C2","C3","ë-C3","C3 Picasso","C3 Aircross","C4","ë-C4","C4 X","C4 Cactus","C4 Picasso","Grand C4 Picasso","C4 SpaceTourer","C5","C5 X","C5 Aircross","C-Elysée","C-Zero","C8","Xsara","Xsara Picasso","Berlingo","SpaceTourer","Ami"],"Cupra":["Raval","Born","Leon","Formentor","Ateca","Terramar","Tavascan"],"Dacia":["Logan","Logan MCV","Sandero","Sandero Stepway","Duster","Bigster","Lodgy","Dokker","Jogger","Spring"],"Daewoo":["Matiz","Kalos","Lanos","Nubira","Lacetti"],"Daihatsu":["Cuore","Sirion","Terios"],"Deepal":["S05","S07"],"DFSK":["Seres 3","Fengon 500","Fengon 580"],"Dodge":["Caliber","Journey","Nitro"],"Dongfeng":["Box","Mage","Vigo"],"DS":["DS 3","DS 3 Crossback","DS 4","DS 5","DS 7","DS 9","Nº4","Nº7","Nº8"],"Ebro":["s400","s700","s800","s900"],"Fiat":["Panda","Grande Panda","500","500e","500C","500L","500X","600","Punto","Grande Punto","Bravo","Stilo","Tipo","Croma","Sedici","Qubo","Doblò","Freemont","124 Spider"],"Ford":["Ka","Ka+","Fiesta","Fusion","B-Max","C-Max","Grand C-Max","Focus","Mondeo","S-Max","Galaxy","EcoSport","Puma","Puma Gen-E","Kuga","Edge","Explorer","Capri","Mustang","Mustang Mach-E","Ranger","Tourneo Courier","Tourneo Connect","Tourneo Custom"],"Geely":["EX5","Starray","E2"],"GWM":["Haval H6","Haval H7","Haval Jolion","Ora 03","Wey 05"],"Honda":["Jazz","Civic","Accord","Insight","CR-Z","FR-V","HR-V","ZR-V","CR-V","e","e:Ny1","Prelude"],"Hongqi":["HS3","HS5","H9","E-HS9","EH7"],"Hyundai":["Atos","Getz","i10","i20","i30","i40","ix20","ix35","Accent","Elantra","Bayon","Kona","Tucson","Santa Fe","Inster","Ioniq","Ioniq 5","Ioniq 6","Ioniq 9","Nexo","Staria"],"Infiniti":["Q30","Q50","QX30","QX70","FX"],"Jaecoo":["5","7","8"],"Jaguar":["X-Type","XE","XF","XJ","F-Type","E-Pace","F-Pace","I-Pace"],"Jeep":["Avenger","Renegade","Compass","Patriot","Cherokee","Grand Cherokee","Wrangler","Gladiator"],"KGM (SsangYong)":["Tivoli","Korando","Torres","Actyon","Rexton","Musso","Kyron","Rodius"],"Kia":["Picanto","Rio","Stonic","Ceed","ProCeed","XCeed","Venga","Soul","Carens","Niro","Sportage","Sorento","Optima","Stinger","EV2","EV3","EV4","EV5","EV6","EV9"],"Lada":["Niva"],"Lancia":["Ypsilon","Musa","Delta","Lybra","Thema"],"Land Rover":["Defender","Discovery","Discovery Sport","Freelander","Range Rover","Range Rover Sport","Range Rover Evoque","Range Rover Velar"],"Leapmotor":["T03","B03X","B05","B10","C10"],"Lepas":["L4","L6","L8"],"Lexus":["CT","IS","ES","GS","LS","LBX","UX","NX","RX","RZ","LC"],"Lynk & Co":["01","02","08"],"Mazda":["2","3","5","6","6e","CX-3","CX-30","CX-5","CX-6e","CX-60","CX-7","CX-80","MX-30","MX-5"],"Mercedes-Benz":["Clase A","Clase B","Clase C","Clase E","Clase S","Clase G","Clase M","Clase R","Clase T","Clase V","CLA","CLK","CLS","SLK","SLC","SL","GLA","GLB","GLC","GLE","GLK","GLS","EQA","EQB","EQC","EQE","EQS"],"MG":["MG3","MG4","MG4 Urban","MG5","ZS","ZS EV","HS","Marvel R","MGS5","MGS6","MGS9","IM5","Cyberster"],"Mini":["3 puertas","5 puertas","Cabrio","Clubman","Countryman","Paceman","Aceman","Cooper E"],"Mitsubishi":["Colt","Space Star","ASX","Eclipse Cross","Outlander","Montero","L200","i-MiEV"],"Nissan":["Micra","Note","Almera","Primera","Pulsar","Juke","Qashqai","X-Trail","Murano","Pathfinder","Navara","Ariya","Leaf","Townstar","350Z","370Z"],"Omoda":["4","5","E5","7","9"],"Opel":["Agila","Adam","Karl","Corsa","Meriva","Astra","Zafira","Zafira Life","Vectra","Insignia","Mokka","Crossland","Grandland","Frontera","Antara","Combo Life","Ampera"],"Peugeot":["107","108","206","207","208","307","308","407","408","508","607","1007","2008","3008","4007","5008","807","Partner Tepee","Rifter","Traveller"],"Polestar":["2","3","4"],"Porsche":["911","Boxster","Cayman","718","Macan","Cayenne","Panamera","Taycan"],"Renault":["Twingo","Clio","Modus","Megane","Megane E-Tech","Scenic","Grand Scenic","Scenic E-Tech","Laguna","Fluence","Latitude","Captur","Kadjar","Arkana","Austral","Symbioz","Rafale","Koleos","Espace","Kangoo","Zoe","4 E-Tech","5 E-Tech","Twizy"],"Rover":["25","45","75"],"Saab":["9-3","9-5"],"Seat":["Arosa","Mii","Ibiza","Córdoba","Leon","Toledo","Altea","Altea XL","Exeo","Alhambra","Arona","Ateca","Tarraco"],"Skoda":["Citigo","Fabia","Rapid","Scala","Roomster","Octavia","Superb","Yeti","Kamiq","Karoq","Kodiaq","Enyaq","Elroq","Epiq","Peaq"],"Smart":["fortwo","forfour","#1","#3","#5"],"Subaru":["Impreza","XV","Crosstrek","Forester","Outback","Legacy","BRZ","Solterra"],"Suzuki":["Alto","Celerio","Ignis","Swift","Baleno","SX4","S-Cross","Vitara","Grand Vitara","e Vitara","Jimny","Swace","Across"],"Tesla":["Model 3","Model Y","Model S","Model X"],"Toyota":["Aygo","Aygo X","Yaris","Yaris Cross","Urban Cruiser","Auris","Corolla","Corolla Cross","Avensis","Verso","Prius","Prius+","C-HR","C-HR+","RAV4","Land Cruiser","Hilux","GT86","GR86","GR Yaris","Supra","Camry","Mirai","bZ4X","Proace City Verso"],"Volkswagen":["Fox","Lupo","up!","Polo","ID. Polo","Golf","Golf Plus","Golf Sportsvan","Jetta","Bora","Beetle","Scirocco","Eos","Passat","Passat CC","Arteon","Touran","Sharan","T-Cross","Taigo","T-Roc","Tiguan","Tiguan Allspace","Tayron","Touareg","ID.3","ID.4","ID.5","ID.7","ID. Cross","ID. Buzz","Multivan","California","Amarok"],"Volvo":["C30","S40","V40","V50","S60","V60","V70","S80","S90","V90","XC40","XC60","XC70","XC90","EX30","EX40","EC40","EX90","ES90"],"Xpeng":["G6","G9","P7","X9"],"Zeekr":["001","7X","X"]},"van":{"Citroën":["Nemo","Berlingo","Jumpy","Jumper"],"Dacia":["Dokker Van"],"Fiat":["Fiorino","Doblò","Qubo","Scudo","Talento","Ducato"],"Ford":["Transit Courier","Transit Connect","Transit Custom","Transit","E-Transit","Ranger"],"Hyundai":["H-1","H350","Staria"],"Isuzu":["D-Max"],"Iveco":["Daily","eDaily"],"Kia":["PV5"],"Maxus":["eDeliver 3","eDeliver 7","eDeliver 9","Deliver 9","T90"],"Mercedes-Benz":["Citan","Vito","eVito","Sprinter","eSprinter"],"Mitsubishi":["L200"],"Nissan":["NV200","Townstar","NV300","Primastar","NV400","Interstar","Navara"],"Opel":["Combo","Vivaro","Movano"],"Peugeot":["Bipper","Partner","Expert","Boxer"],"Piaggio":["Porter"],"Renault":["Express","Kangoo","Trafic","Master"],"Toyota":["Proace City","Proace","Proace Max","Hilux"],"Volkswagen":["Caddy","Transporter","Multivan","California","Grand California","Crafter","ID. Buzz","Amarok"]},"moto":{"Aprilia":["SR GT 125","RS 125","RS 457","RS 660","Tuono 660","Tuareg 660","Shiver 750","Dorsoduro","Tuono V4","RSV4"],"Benelli":["BN 125","Leoncino 500","TRK 502","TRK 702","752S"],"BMW Motorrad":["G 310 R","G 310 GS","F 650 GS","F 700 GS","F 750 GS","F 800 GS","F 850 GS","F 900 GS","F 800 R","F 900 R","F 900 XR","R 1200 GS","R 1250 GS","R 1300 GS","R 1250 RT","R nineT","S 1000 R","S 1000 RR","S 1000 XR","C 400 X","C 400 GT","CE 04"],"CFMoto":["300NK","450NK","800NK","450SR","450MT","700MT","800MT","700CL-X","450CL-C"],"Daelim":["Daystar","S2","Otello"],"Derbi":["Senda","Terra","Mulhacén","GPR"],"Ducati":["Monster","Monster 821","Scrambler","Hypermotard","SuperSport","Multistrada","Multistrada V2","Multistrada V4","Panigale V2","Panigale V4","Streetfighter V4","Diavel","DesertX"],"Harley-Davidson":["Sportster 883","Iron 883","Forty-Eight","Sportster S","Nightster","Street Bob","Fat Bob","Fat Boy","Road King","Street Glide","Pan America"],"Honda":["Vision 110","Wave 110","Scoopy SH125","SH125","SH150","SH300","SH350","PCX125","Forza 125","Forza 350","Forza 750","ADV 350","X-ADV","Integra","CB125F","CB125R","CB300R","CB500F","CB500 Hornet","CB500X","NX500","CBR500R","CB600F Hornet","CBF600","CB650F","CB650R","CBR650R","CB750 Hornet","CBF1000","CBR1000RR Fireblade","NC700X","NC750X","XL750 Transalp","Varadero","Deauville","Africa Twin","Rebel 500","Rebel 1100","Gold Wing","Monkey","MSX125 Grom","EM1 e:"],"Husqvarna":["Svartpilen 125","Svartpilen 401","Vitpilen 401","Norden 901"],"Kawasaki":["Z125","Z400","Z650","Z650RS","Z750","Z800","Z900","Z900RS","Z1000","ER-6n","Ninja 400","Ninja 500","Ninja 650","Ninja ZX-6R","Ninja ZX-10R","Versys-X 300","Versys 650","Versys 1000","Vulcan S","Eliminator"],"Kove":["450 Rally","800X"],"KTM":["Duke 125","Duke 390","Duke 690","Duke 790","Duke 890","1290 Super Duke R","RC 125","RC 390","390 Adventure","790 Adventure","890 Adventure","1290 Super Adventure","EXC 300"],"Kymco":["Agility 125","Agility City","People S","People GT","Super Dink","Grand Dink","X-Town","Xciting","DT X360","AK 550"],"Macbor":["Montana XR1","Montana XR3","Montana XR5","Eight Mile","Rockster"],"Moto Guzzi":["V7","V85 TT","V100 Mandello","Stelvio"],"MV Agusta":["Brutale","Dragster","F3","Turismo Veloce"],"Piaggio":["Zip","Fly","Liberty","Medley","Beverly","X7","X10","MP3"],"QJMotor":["SRK 600","SRK 700","SRK 800","SRT 550","SRT 800","SRV 550"],"Rieju":["Tango","MRT","Marathon","Century"],"Royal Enfield":["Bullet 350","Classic 350","Meteor 350","Hunter 350","Scram 411","Himalayan","Himalayan 450","Guerrilla 450","Interceptor 650","Continental GT 650","Super Meteor 650","Shotgun 650"],"Silence":["S01","S02"],"Suzuki":["Address","Burgman 125","Burgman 200","Burgman 400","Burgman 650","GSX-S125","GSX-R125","GS500","Gladius","SV650","Bandit 650","Bandit 1250","GSX-S750","GSX-8S","GSX-8R","GSX-S1000","GSX-S1000GT","Katana","GSX-R600","GSX-R750","GSX-R1000","Hayabusa","V-Strom 250 SX","V-Strom 650","V-Strom 800DE","V-Strom 1050"],"SYM":["Symphony 125","Symphony ST","Fiddle","Orbit","Jet 14","ADX 125","Joymax Z","Cruisym","Maxsym TL","ADXTG 400"],"Triumph":["Speed 400","Scrambler 400 X","Trident 660","Tiger 660 Sport","Daytona 660","Street Triple","Speed Triple","Street Twin","Speed Twin","Bonneville T100","Bonneville T120","Tiger 800","Tiger 900","Tiger 1200","Rocket 3"],"Vespa":["Primavera","Sprint","LX","GTS 125","GTS 300","GTV","Elettrica"],"Voge":["SR1 ADV 125","SR4 Max","300 AC","300 Rally","525 ACX","525 DSX","625 DSX","900 DSX"],"Yamaha":["D'elight","Neo's","X-City","Majesty","Tricity 125","Tricity 300","NMAX 125","NMAX 155","XMAX 125","XMAX 300","XMAX 400","TMAX","MT-125","YZF-R125","XSR125","MT-03","YZF-R3","FZ6 Fazer","XJ6","MT-07","XSR700","Tracer 7","YZF-R7","YZF-R6","MT-09","XSR900","Tracer 9","Niken","FZ1","MT-10","YZF-R1","Ténéré 700","Super Ténéré"],"Zontes":["125X","125V","350D","350E","350T","368G","703F"]},"quad":{"Can-Am":["Outlander","Renegade","DS 450"],"CFMoto":["CForce 450","CForce 520","CForce 625","CForce 850","CForce 1000"],"Honda":["TRX420 Rancher","TRX520 Foreman","TRX680 Rincon"],"Kymco":["MXU 300","MXU 550","MXU 700"],"Linhai":["LH 300","LH 500","LH 600"],"Polaris":["Sportsman 450","Sportsman 570","Sportsman 1000","Scrambler"],"Suzuki":["KingQuad"],"TGB":["Blade"],"Yamaha":["Grizzly","Kodiak","Raptor 700","YFZ450R"]},"truck":{"DAF":["LF","CF","XF","XF 105","XG","XG+","XB"],"Isuzu":["Serie N","Serie F"],"Iveco":["Eurocargo","Stralis","Trakker","S-Way","X-Way","T-Way"],"MAN":["TGL","TGM","TGS","TGX","TGA"],"Mercedes-Benz":["Atego","Axor","Antos","Actros","Arocs","Econic","eActros"],"Mitsubishi Fuso":["Canter","eCanter"],"Renault Trucks":["Midlum","Premium","Magnum","Kerax","D","C","K","T","T High","E-Tech T"],"Scania":["Serie P","Serie G","Serie R","Serie S","Serie L","XT"],"Volvo":["FL","FE","FM","FMX","FH","FH16","FH Aero"]},"bus":{"BYD":["eBus 12","eBus 18"],"Castrosua":["New City","Magnus"],"Irizar":["i3","i4","i6","i6S","i8","ie bus","ie tram"],"Isuzu":["Novo","Citibus"],"Iveco Bus":["Crossway","Urbanway","Streetway","Evadys","Magelys"],"MAN":["Lion's City","Lion's Intercity","Lion's Coach"],"Mercedes-Benz":["Citaro","eCitaro","Intouro","Tourismo","Sprinter City"],"Neoplan":["Tourliner","Cityliner","Skyliner"],"Scania":["Citywide","Interlink","Touring"],"Setra":["ComfortClass","TopClass","MultiClass"],"Solaris":["Urbino","Urbino electric","InterUrbino"],"Sunsundegui":["SC5","SC7","Sideral"],"Temsa":["Safari","HD 12","LD"],"Van Hool":["TX","EX","A330"],"Volvo":["7900","8900","9700","9900"]},"caravan":{"Adria":["Coral","Matrix","Compact","Sonic","Twin","Altea","Adora"],"Benimar":["Tessoro","Mileo","Sport","Benivan"],"Bürstner":["Lyseo","Travel Van","Campeo"],"Carado":["T135","T338","V600"],"Carthago":["C-Tourer","Chic"],"Challenger":[],"Chausson":[],"Dethleffs":["Trend","Just","Pulse","Globebus","Globetrotter"],"Elnagh":[],"Globecar":[],"Hymer":["B-Klasse","Exsis","ML-T","Grand Canyon S","Free"],"Joa Camp":[],"Knaus":["BoxStar","Van TI","Sky TI","Live Wave","Sport"],"McLouis":["Menfys","Fusion"],"Pilote":[],"Pössl":[],"Rapido":[],"Roller Team":[],"Sun Living":[],"Weinsberg":["CaraCompact","CaraBus","CaraTour","CaraSuite","CaraOne"],"Westfalia":[]},"boat":{"Astondoa":[],"Bavaria":["Cruiser","C","SR","Vida"],"Bayliner":["VR5","VR6","Element","Trophy"],"Beneteau":["Antares","Flyer","Gran Turismo","Swift Trawler","Oceanis","First"],"Brig":["Eagle","Navigator","Falcon"],"Capelli":["Tempest"],"Fountaine Pajot":[],"Jeanneau":["Cap Camarat","Merry Fisher","Leader","Sun Odyssey"],"Kawasaki":["Jet Ski STX 160","Jet Ski Ultra 310"],"Lagoon":["40","42","46"],"Pacific Craft":[],"Quicksilver":["Activ 455","Activ 505","Activ 555","Activ 605","Activ 675","Activ 755","Activ 805","Activ 875"],"Ranieri":[],"Rodman":[],"Saver":[],"Sea Ray":["SPX","SDX","Sundancer"],"Sea-Doo":["Spark","GTI","GTX","RXT","Wake"],"Sessa":[],"Yamaha":["WaveRunner EX","WaveRunner VX","WaveRunner FX","WaveRunner GP"],"Zodiac":["Cadet","Medline","Pro Open"]}};
+const ENGINES = {"Audi|A3":["30 TFSI 110 CV","35 TFSI 150 CV","30 TDI 116 CV","35 TDI 150 CV","40 TFSI e 204 CV","S3 310 CV"],"BMW|Serie 1":["116i","118i","120i","116d","118d","120d","M135"],"BMW|Serie 3":["318i","320i","330i","318d","320d","330e"],"BYD|Atto 2 DM-i":["DM-i 156 CV","DM-i 212 CV"],"BYD|Seal U DM-i":["DM-i 218 CV","DM-i AWD 324 CV"],"Citroën|C3":["1.2 PureTech 83 CV","1.2 PureTech 110 CV","1.2 Hybrid 100 CV","1.5 BlueHDi 100 CV"],"Citroën|C4":["1.2 PureTech 130 CV","1.2 Hybrid 136 CV","1.5 BlueHDi 130 CV","ë-C4 156 CV"],"Cupra|Formentor":["1.5 TSI 150 CV","e-Hybrid 204 CV","e-Hybrid 272 CV","2.0 TSI VZ 333 CV"],"Dacia|Duster":["1.0 TCe 100 CV GLP","1.2 TCe 130 CV","1.5 dCi 115 CV","Hybrid 140 CV"],"Dacia|Sandero":["1.0 SCe 65 CV","1.0 TCe 90 CV","1.0 ECO-G 100 CV GLP","Hybrid 155 CV"],"Fiat|500":["1.2 69 CV","1.0 Hybrid 70 CV","500e 95 CV","500e 118 CV"],"Ford|Focus":["1.0 EcoBoost 125 CV","1.0 EcoBoost mHEV 155 CV","1.5 EcoBlue 120 CV","1.6 TDCi 115 CV"],"Ford|Puma":["1.0 EcoBoost mHEV 125 CV","1.0 EcoBoost mHEV 155 CV","ST 200 CV"],"Hyundai|i10":["1.0 MPI 67 CV","1.2 MPI 79 CV"],"Hyundai|Kona":["1.0 T-GDi 120 CV","1.6 HEV 141 CV","Eléctrico 156 CV","Eléctrico 218 CV"],"Hyundai|Tucson":["1.6 T-GDi 150 CV","1.6 T-GDi HEV 230 CV","1.6 T-GDi PHEV 265 CV","1.6 CRDi 136 CV"],"Kia|Niro":["1.6 HEV 141 CV","1.6 PHEV 183 CV","Eléctrico 204 CV"],"Kia|Sportage":["1.6 T-GDi 150 CV","1.6 T-GDi HEV 230 CV","1.6 T-GDi PHEV 265 CV","1.6 CRDi 136 CV"],"Mercedes-Benz|Clase A":["A 180","A 200","A 250 e","A 180 d","A 200 d"],"MG|HS":["1.5 T-GDi 170 CV","Hybrid+ 224 CV","PHEV 272 CV"],"MG|MG3":["1.5 VTi 106 CV","Hybrid+ 194 CV"],"MG|ZS":["1.5 VTi-tech 106 CV","Hybrid+ 196 CV"],"Nissan|Qashqai":["1.3 DIG-T 140 CV","1.3 DIG-T 158 CV","1.5 e-Power 190 CV","1.5 dCi 115 CV"],"Opel|Corsa":["1.2 75 CV","1.2 Turbo 100 CV","1.2 Hybrid 100 CV","1.5 Diésel 100 CV","Electric 136 CV"],"Peugeot|208":["1.2 PureTech 75 CV","1.2 PureTech 100 CV","1.2 Hybrid 100 CV","1.5 BlueHDi 100 CV","e-208 136 CV","e-208 156 CV"],"Peugeot|2008":["1.2 PureTech 100 CV","1.2 PureTech 130 CV","1.2 Hybrid 136 CV","1.5 BlueHDi 110 CV","e-2008 156 CV"],"Peugeot|308":["1.2 PureTech 130 CV","1.2 Hybrid 136 CV","1.5 BlueHDi 130 CV","Hybrid 180 CV PHEV"],"Renault|Captur":["1.0 TCe 90 CV","1.0 TCe 100 CV GLP","1.3 TCe 140 CV","E-Tech 145 CV","1.5 dCi 115 CV"],"Renault|Clio":["1.0 TCe 90 CV","1.0 TCe 100 CV GLP","1.3 TCe 140 CV","E-Tech 145 CV","1.5 dCi 100 CV"],"Renault|Megane":["1.3 TCe 140 CV","1.5 dCi 115 CV","E-Tech 160 CV PHEV"],"Seat|Arona":["1.0 TSI 95 CV","1.0 TSI 115 CV","1.5 TSI 150 CV","1.0 TGI 90 CV GNC"],"Seat|Ateca":["1.0 TSI 110 CV","1.5 TSI 150 CV","2.0 TDI 115 CV","2.0 TDI 150 CV"],"Seat|Ibiza":["1.0 MPI 80 CV","1.0 TSI 95 CV","1.0 TSI 115 CV","1.5 TSI 150 CV","1.0 TGI 90 CV GNC"],"Seat|Leon":["1.0 TSI 110 CV","1.5 TSI 150 CV","1.5 eTSI 150 CV","2.0 TDI 115 CV","2.0 TDI 150 CV","e-Hybrid 204 CV"],"Skoda|Octavia":["1.0 TSI 110 CV","1.5 TSI 150 CV","2.0 TDI 115 CV","2.0 TDI 150 CV","RS 265 CV"],"Tesla|Model 3":["Propulsión trasera","Gran Autonomía","Performance"],"Tesla|Model Y":["Propulsión trasera","Gran Autonomía","Performance"],"Toyota|C-HR":["1.8 Hybrid 140 CV","2.0 Hybrid 197 CV","2.0 PHEV 223 CV"],"Toyota|Corolla":["1.8 Hybrid 140 CV","2.0 Hybrid 196 CV"],"Toyota|RAV4":["2.5 Hybrid 218 CV","2.5 Hybrid AWD 222 CV","2.5 PHEV 306 CV"],"Toyota|Yaris":["1.0 VVT-i 72 CV","1.5 Hybrid 116 CV","1.5 Hybrid 130 CV","GR 261 CV"],"Toyota|Yaris Cross":["1.5 Hybrid 116 CV","1.5 Hybrid 130 CV"],"Volkswagen|Golf":["1.0 TSI 110 CV","1.5 TSI 130 CV","1.5 TSI 150 CV","2.0 TDI 115 CV","2.0 TDI 150 CV","eHybrid 204 CV","2.0 TSI GTI 245 CV"],"Volkswagen|Polo":["1.0 MPI 80 CV","1.0 TSI 95 CV","1.0 TSI 110 CV","2.0 TSI GTI 207 CV"],"Volkswagen|T-Roc":["1.0 TSI 110 CV","1.5 TSI 150 CV","2.0 TDI 115 CV","2.0 TDI 150 CV"]};
+const BOAT_ENGINES = ["Mercury 40 CV", "Mercury 60 CV", "Mercury 115 CV", "Mercury 150 CV", "Mercury 200 CV", "Yamaha F40", "Yamaha F70", "Yamaha F115", "Yamaha F150", "Yamaha F200", "Suzuki DF40", "Suzuki DF70", "Suzuki DF115", "Suzuki DF140", "Honda BF40", "Honda BF100", "Tohatsu MFS 50", "Volvo Penta D2", "Volvo Penta D4", "Yanmar 3YM30"];
+const ACC = { á: "a", à: "a", ä: "a", â: "a", é: "e", è: "e", ë: "e", ê: "e", í: "i", ì: "i", ï: "i", î: "i", ó: "o", ò: "o", ö: "o", ô: "o", ú: "u", ù: "u", ü: "u", û: "u" };
+const norm = (x) => String(x).trim().toLowerCase().replace(/[áàäâéèëêíìïîóòöôúùüû]/g, (c) => ACC[c]).replace(/\s+/g, " ");
+const catFor = (t) => ({ coche: CAT.car, todoterreno: CAT.car, furgoneta: CAT.van, moto: CAT.moto, quad: CAT.quad, camion: CAT.truck, autobus: CAT.bus, barco: CAT.boat, caravana: CAT.caravan }[t] || {});
+const brandsFor = (t) => Object.keys(catFor(t));
+const modelsFor = (t, b) => { const k = brandsFor(t).find((x) => norm(x) === norm(b)); return k ? catFor(t)[k] : []; };
+const enginesFor = (b, m, t) => { const k = Object.keys(ENGINES).find((x) => { const [eb, em] = x.split("|"); return norm(eb) === norm(b) && norm(em) === norm(m); }); return k ? ENGINES[k] : (t === "barco" ? BOAT_ENGINES : []); };
+
+/* ── Ficha simulada (sustituye a la Edge Function en la demo) ── */
+const SPEC_FIELDS = [
+  ["oil_type", "Aceite", "🛢️", "ej. 5W-30 VW 504.00"], ["oil_liters", "Litros de aceite", "💧", "ej. 4,3"],
+  ["oil_filter_ref", "Filtro de aceite", "🔵", "Referencia"], ["air_filter_ref", "Filtro de aire", "💨", "Referencia"],
+  ["cabin_filter_ref", "Filtro de habitáculo", "🌬️", "Referencia"], ["fuel_filter_ref", "Filtro de combustible", "⛽", "Referencia"],
+  ["spark_plug_ref", "Bujías", "⚡", "Referencia"], ["tire_size_front", "Neumático delantero", "🔘", "ej. 205/55 R16 91V"],
+  ["tire_size_rear", "Neumático trasero", "🔘", "ej. 205/55 R16 91V"], ["battery_spec", "Batería", "🔋", "ej. 70 Ah 640 A"],
+];
+function specFieldsFor(d) {
+  const ev = d.fuelType === "Eléctrico", diesel = d.fuelType === "Diésel";
+  const noCabin = ["moto", "quad", "barco"].includes(d.type), noTyres = d.type === "barco";
+  return SPEC_FIELDS.filter(([k]) => !(ev && ["oil_type", "oil_liters", "oil_filter_ref", "fuel_filter_ref", "spark_plug_ref"].includes(k)) && !(diesel && k === "spark_plug_ref") && !(noCabin && k === "cabin_filter_ref") && !(noTyres && k.startsWith("tire_")));
+}
+function simulatedSpecs(d) {
+  const moto = d.type === "moto" || d.type === "quad", heavy = d.type === "camion" || d.type === "autobus";
+  const s = {
+    oil_type: d.fuelType === "Diésel" ? "5W-30 ACEA C3" : moto ? "10W-40 JASO MA2" : heavy ? "10W-40 ACEA E6" : "5W-30 ACEA C3",
+    oil_liters: moto ? "3,1" : heavy ? "38" : d.fuelType === "Diésel" ? "4,7" : "4,0",
+    tire_size_front: moto ? "120/70 ZR17" : heavy ? "315/70 R22.5" : "205/55 R16 91V",
+    tire_size_rear: moto ? "180/55 ZR17" : heavy ? "315/80 R22.5" : "205/55 R16 91V",
+    battery_spec: moto ? "12 V 8,6 Ah" : heavy ? "2 × 12 V 225 Ah" : "12 V 60 Ah 540 A",
+  };
+  if (d.type === "barco") return { oil_type: "10W-40 FC-W", oil_liters: "5,0", battery_spec: "12 V 100 Ah" };
+  return s;
+}
+
+/* ═══════════ Estado de la demo ═══════════ */
+const STORE_KEY = "mantenitrak-demo-v3";
+function exampleVehicles() {
+  let n = 0; const id = (p) => `${p}${++n}`;
+  const rec = (itemId, ago, km, cost, notes) => ({ id: id("m"), itemId, date: daysAgo(ago), km, cost, notes });
+  const fl = (ago, km, liters, total, full = true, station = "Repsol", fuelType = "Gasolina 95") => ({ id: id("f"), date: daysAgo(ago), km, liters, total, price: Math.round(total / liters * 1000) / 1000, full, station, fuelType });
+  const ex = (cat, ago, amount) => ({ id: id("e"), cat, date: daysAgo(ago), amount });
+  return [
+    { id: "v1", type: "coche", brand: "Seat", model: "Ibiza", year: 2019, engine: "1.0 TSI 95 CV", plate: "4521 HJK", fuelType: "Gasolina", usage: "Mixto", zone: "costa", ownerRole: "owner", currentKm: 61200, annualKm: 12000,
+      specs: { source: "ia", values: { oil_type: "5W-30 VW 504.00", oil_liters: "4,0", oil_filter_ref: "Mann W 712/95", air_filter_ref: "Mann C 27 009", cabin_filter_ref: "Mann CUK 26 009", spark_plug_ref: "NGK PFR7S8EG", tire_size_front: "185/65 R15 88T", tire_size_rear: "185/65 R15 88T", battery_spec: "12 V 59 Ah 320 A" } },
+      kmLogs: [{ date: daysAgo(210), km: 55200 }, { date: daysAgo(41), km: 61200 }],
+      records: [rec("aceite", 430, 47800, 89.9, "Taller Pepe"), rec("filtro_aceite", 430, 47800, 12), rec("filtro_aire", 430, 47800, 18), rec("neumaticos", 700, 30000, 320, "4 Michelin"), rec("itv", 700, 32000, 42.5), rec("frenos_delanteros", 330, 50000, 110), rec("bateria", 380, 49000, 95)],
+      fuelLogs: [fl(95, 59000, 40, 61.96), fl(80, 59650, 42, 65.06), fl(65, 60100, 15, 23.67, false, "Cepsa"), fl(55, 60450, 37, 57.39), fl(41, 61200, 47, 74.21, true, "BP")],
+      expenses: [ex("seguro", 200, 385), ex("impuesto", 160, 62), ex("parking", 9, 24), ex("lavado", 30, 12)] },
+    { id: "v2", type: "moto", brand: "Yamaha", model: "MT-07", year: 2021, engine: "", plate: "1187 LKP", fuelType: "Gasolina", usage: "Carretera", zone: "interior", ownerRole: "owner", currentKm: 18400, annualKm: 6000, specs: null,
+      kmLogs: [{ date: daysAgo(9), km: 18400 }],
+      records: [rec("aceite", 95, 16000, 75), rec("filtro_aceite", 95, 16000, 14), rec("cadena_lubricado", 20, 18000, null, "Spray de cadena"), rec("neumaticos", 300, 12000, 290)],
+      fuelLogs: [], expenses: [ex("seguro", 120, 240)] },
+    { id: "v3", type: "furgoneta", brand: "Renault", model: "Kangoo", year: 2017, engine: "1.5 dCi 90 CV", plate: "8890 JTW", fuelType: "Diésel", usage: "Profesional", zone: "interior", ownerRole: "mechanic", currentKm: 142300, annualKm: 25000, specs: null,
+      kmLogs: [{ date: daysAgo(12), km: 142300 }],
+      records: [rec("aceite", 170, 135100, 95), rec("filtro_aceite", 170, 135100, 15), rec("correa_distribucion", 1500, 60000, 480, "Kit + bomba de agua"), rec("itv", 330, 133000, 46.1)],
+      fuelLogs: [], expenses: [] },
+  ];
+}
+function freshDB() {
+  return { accounts: { "demo@mantenitrak.app": { name: "Laura", password: "demo1234", confirmed: true, vehicles: exampleVehicles() } }, onboardingSeen: false };
+}
+let DB;
+try { DB = JSON.parse(localStorage.getItem(STORE_KEY)) || freshDB(); } catch { DB = freshDB(); }
+const persist = () => { try { localStorage.setItem(STORE_KEY, JSON.stringify(DB)); return true; } catch { return false; /* sin espacio o sin almacenamiento: la demo sigue en memoria */ } };
+
+const S = {
+  screen: DB.onboardingSeen ? "login" : "onboarding", slide: 0, user: null,
+  dark: matchMedia("(prefers-color-scheme: dark)").matches, workshop: false, menu: false,
+  form: {}, error: null, info: null, busy: false, pendingEmail: null, recovering: false,
+  wiz: null, sheet: null, dialog: null, toast: null,
+};
+const app = document.getElementById("app");
+const account = () => DB.accounts[S.user];
+
+/* ═══════════ Vistas ═══════════ */
+const statusBar = () => `<div class="statusbar" aria-hidden="true"><span>9:41</span><span>●●● 🔋</span></div>`;
+const banner = (msg, tone = "error", action = "") => msg ? `<div class="banner ${tone}" role="status"><span>${tone === "error" ? "⚠️" : tone === "ok" ? "✓" : "ℹ️"}</span><div style="flex:1">${esc(msg)}${action}</div></div>` : "";
+const field = (id, label, opts = {}) => `
+  <div class="field">
+    <label class="label" for="${id}">${esc(label)}</label>
+    <div class="input-wrap">
+      <input class="input" id="${id}" name="${id}" type="${opts.type || "text"}" value="${esc(opts.value ?? S.form[id] ?? "")}" placeholder="${esc(opts.hint || "")}"
+        ${opts.list ? `list="${opts.list}"` : ""} ${opts.mode ? `inputmode="${opts.mode}"` : ""} ${opts.auto ? `autocomplete="${opts.auto}"` : ""} ${opts.max ? `maxlength="${opts.max}"` : ""}
+        data-validate="${opts.v || ""}" ${opts.style ? `style="${opts.style}"` : ""}>
+      ${opts.suffix ? `<span class="suffix">${esc(opts.suffix)}</span>` : ""}
+      ${opts.type === "password" ? `<button class="icon-btn eye" type="button" data-act="toggle-pass" data-for="${id}" aria-label="Mostrar contraseña">👁️</button>` : ""}
+    </div>
+    <div class="err" id="${id}-err"></div>
+    ${opts.help ? `<div class="help">${esc(opts.help)}</div>` : ""}
+  </div>`;
+const spinnerOr = (label) => S.busy ? `<span class="spinner" aria-label="Cargando"></span>` : esc(label);
+
+function vOnboarding() {
+  const slides = [
+    ["🔩", "Bienvenido a ManteniTrack", "El registro inteligente de mantenimiento para todos tus vehículos."],
+    ["📋", "Sin conocimientos técnicos", "La app te dice qué revisar, cuándo y por qué, en lenguaje claro."],
+    ["⛽", "Combustible y gastos", "Repostajes, seguros, multas y todos los gastos del vehículo en un lugar."],
+    ["🗺️", "Viajes con checklist", "Revisa el vehículo antes de salir y calcula el gasto del viaje."],
+    ["🤖", "IA que trabaja por ti", "Genera la ficha técnica y analiza tus neumáticos con una foto."],
+  ];
+  const [em, t, b] = slides[S.slide], last = S.slide === slides.length - 1;
+  return `<div class="screen">
+    <div class="slide"><div class="em">${em}</div><h2 class="h-title" style="font-size:24px">${t}</h2><p class="h-sub">${b}</p></div>
+    <div class="dots" aria-label="Página ${S.slide + 1} de 5">${slides.map((_, i) => `<i class="${i === S.slide ? "on" : ""}"></i>`).join("")}</div>
+    <div style="padding:28px 24px 20px;display:grid;gap:4px">
+      <button class="btn" data-act="${last ? "onb-done" : "onb-next"}">${last ? "Empezar" : "Siguiente"}</button>
+      <button class="btn ghost" data-act="onb-done">${last ? "Ya tengo cuenta" : "Saltar"}</button>
+    </div></div>`;
+}
+
+function authShell(inner, back) {
+  return `<div class="screen">${back ? `<div class="appbar sub" style="border:0;background:transparent"><button class="icon-btn" data-act="go" data-to="login" aria-label="Atrás">←</button></div>` : ""}
+    <div class="scroll ${back ? "" : "center"}" style="padding:24px">${inner}</div></div>`;
+}
+function vLogin() {
+  return authShell(`
+    <div class="logo" style="--s:60px;margin:0 auto 4px"></div>
+    <h2 class="h-title">ManteniTrack</h2><p class="h-sub" style="margin-bottom:18px">Inicia sesión para continuar</p>
+    <form data-form="login" novalidate style="display:grid;gap:14px">
+      ${field("email", "Correo electrónico", { hint: "tu@email.com", v: "email", auto: "email", mode: "email" })}
+      ${field("password", "Contraseña", { type: "password", hint: "••••••••", v: "password", auto: "current-password" })}
+      <div style="text-align:right;margin-top:-8px"><button type="button" class="link" data-act="go" data-to="forgot">¿Olvidaste la contraseña?</button></div>
+      ${banner(S.error, "error", S.error && S.error.includes("confirmado") ? `<div><button type="button" class="link" style="padding:4px 0" data-act="resend">Reenviar correo</button></div>` : "")}
+      ${banner(S.info, "ok")}
+      <button class="btn" type="submit" ${S.busy ? "disabled" : ""}>${spinnerOr("Entrar")}</button>
+    </form>
+    <div class="row" style="margin:6px 0"><div class="grow" style="height:1px;background:var(--border)"></div><span style="color:var(--text-soft)">o</span><div class="grow" style="height:1px;background:var(--border)"></div></div>
+    <button class="btn outline" data-act="google"><b style="color:#4285F4;font-size:18px">G</b> Continuar con Google</button>
+    <p class="h-sub" style="margin-top:12px">¿No tienes cuenta? <button class="link" data-act="go" data-to="register">Regístrate</button></p>`);
+}
+function vRegister() {
+  if (S.pendingEmail) return authShell(`
+    <div style="font-size:64px;text-align:center">📧</div><h2 class="h-title" style="font-size:24px">Confirma tu email</h2>
+    <p class="h-sub">Hemos enviado un enlace a ${esc(S.pendingEmail)}.<br>Ábrelo desde este dispositivo para activar tu cuenta.</p>
+    ${banner("En la demo no se envía ningún correo: pulsa el botón para simular que abres el enlace.", "info")}
+    <button class="btn green" data-act="confirm-link">Simular: abrir el enlace del correo</button>
+    <button class="btn outline" data-act="go" data-to="login">Ir a iniciar sesión</button>`);
+  return authShell(`
+    <h2 class="h-title">Crear cuenta</h2><p class="h-sub" style="margin-bottom:10px">Lleva el mantenimiento de tus vehículos al día</p>
+    <form data-form="register" novalidate style="display:grid;gap:14px">
+      ${field("name", "Nombre", { hint: "Tu nombre", v: "name", auto: "name" })}
+      ${field("email", "Correo electrónico", { hint: "tu@email.com", v: "email", auto: "email", mode: "email" })}
+      ${field("password", "Contraseña", { type: "password", hint: "Mínimo 8 caracteres", v: "newPassword", auto: "new-password" })}
+      ${field("password2", "Repetir contraseña", { type: "password", hint: "••••••••", v: "confirm", auto: "new-password" })}
+      ${banner(S.error)}
+      <button class="btn" type="submit" ${S.busy ? "disabled" : ""}>${spinnerOr("Crear cuenta")}</button>
+      <p class="help" style="text-align:center">Al registrarte aceptas los Términos de uso y la Política de privacidad de ManteniTrack.</p>
+    </form>`, true);
+}
+function vForgot() {
+  if (S.info) return authShell(`
+    <div style="font-size:60px;text-align:center">✉️</div><h2 class="h-title" style="font-size:24px">Revisa tu correo</h2>
+    <p class="h-sub">${esc(S.info)}</p>
+    ${banner("Solo funciona con cuentas que existan en la demo (por ejemplo, demo@mantenitrak.app).", "info")}
+    <button class="btn green" data-act="reset-link">Simular: abrir el enlace del correo</button>
+    <button class="btn outline" data-act="go" data-to="login">Volver a iniciar sesión</button>`);
+  return authShell(`
+    <h2 class="h-title">Recuperar contraseña</h2><p class="h-sub" style="margin-bottom:10px">Te enviaremos un enlace para crear una nueva</p>
+    <form data-form="forgot" novalidate style="display:grid;gap:14px">
+      ${field("email", "Correo electrónico", { hint: "tu@email.com", v: "email", auto: "email", mode: "email" })}
+      <button class="btn" type="submit" ${S.busy ? "disabled" : ""}>${spinnerOr("Enviar enlace")}</button>
+    </form>`, true);
+}
+function vReset() {
+  return authShell(`
+    <div class="logo" style="--s:60px;margin:0 auto 4px"></div>
+    <h2 class="h-title">Nueva contraseña</h2><p class="h-sub" style="margin-bottom:10px">Elige una contraseña que no hayas usado antes</p>
+    <form data-form="reset" novalidate style="display:grid;gap:14px">
+      ${field("password", "Nueva contraseña", { type: "password", hint: "Mínimo 8 caracteres", v: "newPassword", auto: "new-password" })}
+      ${field("password2", "Repetir contraseña", { type: "password", hint: "••••••••", v: "confirm", auto: "new-password" })}
+      ${banner(S.error)}
+      <button class="btn" type="submit">Guardar contraseña</button>
+    </form>`);
+}
+
+function vHome() {
+  const all = myVehicles(), hasWS = all.some(isWorkshop), ws = S.workshop && hasWS;
+  const vs = all.filter((v) => !ws || isWorkshop(v));
+  const H = new Map(vs.map((v) => [v.id, healthOf(v)]));
+  const alerts = vs.flatMap((v) => H.get(v.id).alerts.map((a) => ({ v, a }))).sort((x, y) => y.a.progress - x.a.progress);
+  const kmDue = vs.filter((v) => H.get(v.id).kmDue);
+  const bar = `<div class="appbar"><h1><span class="logo" style="--s:28px"></span>ManteniTrack</h1>
+    ${hasWS ? `<button class="icon-btn ${ws ? "on" : ""}" data-act="workshop" aria-pressed="${ws}" title="${ws ? "Salir del modo taller" : "Modo taller"}">🔧</button>` : ""}
+    <button class="icon-btn" data-act="theme" title="${S.dark ? "Modo claro" : "Modo oscuro"}">${S.dark ? "☀️" : "🌙"}</button>
+    <button class="icon-btn" data-act="menu" aria-label="Más opciones" aria-expanded="${S.menu}">⋮</button></div>`;
+  if (!all.length) return `<div class="screen">${bar}<div class="empty"><div class="em">🔧</div><h3>Aún no tienes vehículos</h3><p>Añade tu primer vehículo y te diremos qué revisar y cuándo.</p><button class="btn" style="width:auto" data-act="wizard">Añadir mi primer vehículo</button><button class="link" style="margin-top:6px" data-act="join-open">Tengo un código para unirme a uno</button></div>${menu()}</div>`;
+  const first = (account().name || "").split(" ")[0];
+  return `<div class="screen">${bar}<div class="scroll" style="padding-bottom:96px">
+    ${ws ? `<div class="workshop"><small>MODO TALLER</small><b>${plural(vs.length, "vehículo asignado", "vehículos asignados")}</b><span>${plural(alerts.length, "intervención pendiente", "intervenciones pendientes")}</span></div>`
+         : `<div style="font-size:22px;font-weight:800">Hola${first ? ", " + esc(first) : ""} 👋</div>`}
+    ${alerts.length ? `<div class="card" style="background:var(--danger-light);border-color:var(--danger-border);padding:14px 12px 8px 16px">
+      <div style="color:var(--danger);font-weight:800;margin-bottom:4px">⚠️ Necesitan atención</div>
+      ${alerts.slice(0, 4).map(({ v, a }) => `<button class="alert-row" data-act="detail" data-id="${v.id}" data-tab="que-hacer"><span>${a.item.icon}</span><span class="grow"><b style="font-weight:600">${esc(a.item.name)}</b> <em>· ${esc(v.brand + " " + v.model)}</em></span><span class="badge t-${a.status}">${LABEL[a.status]}</span></button>`).join("")}
+      ${alerts.length > 4 ? `<div style="color:var(--text-mid);font-size:12px;padding:2px 0 6px">y ${plural(alerts.length - 4, "aviso más", "avisos más")}</div>` : ""}</div>` : ""}
+    ${kmDue.length ? `<div class="card" style="background:var(--info-light);border-color:var(--info-border)">
+      <div style="color:var(--primary);font-weight:800">📍 Anota el kilometraje</div>
+      <p style="margin:4px 0 10px;color:var(--text-mid);font-size:13px;line-height:1.4">Hace más de un mes sin lectura. Con los km al día, los avisos son más precisos.</p>
+      <div class="chips">${kmDue.map((v) => `<button class="pill" data-act="km" data-id="${v.id}">${typeOf(v.type)[2]} ${esc(v.brand + " " + v.model)}</button>`).join("")}</div></div>` : ""}
+    <div class="section"><h2>${ws ? "Vehículos del taller" : "Mis vehículos"}</h2><span>${plural(vs.length, "vehículo", "vehículos")}</span></div>
+    ${vs.map((v) => vCard(v, H.get(v.id))).join("")}
+  </div><button class="fab" data-act="wizard">＋ Añadir vehículo</button>${menu()}</div>`;
+}
+function menu() {
+  return S.menu ? `<div class="menu" role="menu"><button role="menuitem" data-act="join-open">Unirme a un vehículo</button><button role="menuitem" data-act="logout">Cerrar sesión</button></div>` : "";
+}
+function vCard(v, h) {
+  const [tone, icon, msg] = h.danger ? ["danger", "🔴", `Atención: ${plural(h.danger, "revisión vencida", "revisiones vencidas")}`]
+    : h.warning ? ["warning", "🟡", `${plural(h.warning, "revisión", "revisiones")} próximamente`]
+    : h.pct != null ? ["ok", "🟢", "Todo en orden"] : ["neutral", "⚪", "Registra los mantenimientos para ver su estado"];
+  const sub = [v.year, v.engine, v.plate].filter(Boolean).join(" · ");
+  const color = h.pct == null ? "" : h.pct > 70 ? "var(--ok)" : h.pct > 40 ? "var(--warning)" : "var(--danger)";
+  const role = isOwnerOf(v) ? { regular: "👤 Usuario habitual", company: "🏢 Empresa", mechanic: "🔧 Taller" }[v.ownerRole] : "👥 Compartido contigo";
+  return `<button class="card vcard" data-act="detail" data-id="${v.id}">
+    <div class="vhead"><span style="font-size:30px">${typeOf(v.type)[2]}</span><div class="col grow" style="flex:1"><span class="vname">${esc(v.brand + " " + v.model)}</span><span class="vsub">${esc(sub)}</span></div>
+      ${h.pct != null ? `<div class="score"><b style="color:${color}">${h.pct}%</b><span>salud</span></div>` : ""}</div>
+    <div class="vstate t-${tone}">${icon} ${msg}</div>
+    <div class="chips"><span class="chip t-neutral">📍 ${v.currentKm != null ? fmtKm(v.currentKm) : "Sin km"}</span>
+      ${h.avg != null ? `<span class="chip t-fuel">${h.unit === "L/100" ? "⛽" : "🔌"} ${h.avg.toFixed(1).replace(".", ",")} ${h.unit}</span>` : ""}
+      ${v.specs ? `<span class="chip t-ok">📄 Ficha técnica</span>` : ""}${role ? `<span class="chip t-neutral">${role}</span>` : ""}</div>
+    ${h.danger + h.warning + h.ok ? `<div class="chips">${h.danger ? `<span class="badge t-danger">${plural(h.danger, "vencido", "vencidos")}</span>` : ""}${h.warning ? `<span class="badge t-warning">${plural(h.warning, "próximo", "próximos")}</span>` : ""}${h.ok ? `<span class="badge t-ok">${h.ok} al día</span>` : ""}</div>` : ""}
+  </button>`;
+}
+/* ═══════════ Punto 4: detalle y edición ═══════════ */
+const HELP = {
+  aceite: "El aceite lubrica las piezas del motor para que no se desgasten. Con el tiempo pierde sus propiedades aunque no hagas muchos km.",
+  filtro_aceite: "Atrapa la suciedad del aceite. Se cambia a la vez que el aceite y cuesta muy poco.",
+  filtro_aire: "Evita que el polvo entre en el motor. Un filtro sucio le resta potencia y hace que gaste más.",
+  filtro_combustible: "Retiene las impurezas del combustible antes de que lleguen a los inyectores.",
+  bujias: "Generan la chispa que enciende la mezcla en los motores de gasolina. Gastadas, el motor tira peor y gasta más.",
+  correa_distribucion: "Muy importante. Sincroniza las piezas internas del motor. En muchos motores, si se rompe, la avería es muy cara.",
+  refrigerante: "Evita que el motor se caliente en verano y que el circuito se congele en invierno.",
+  filtro_habitaculo: "Filtra el aire que respiras dentro del vehículo. Sucio, entra polvo y polen.",
+  frenos_delanteros: "Las pastillas rozan contra el disco para frenar. Gastadas, el vehículo tarda más en detenerse.",
+  frenos_traseros: "Igual que las delanteras, pero en el eje trasero. Se gastan más despacio.",
+  discos_delanteros: "La pieza metálica sobre la que frenan las pastillas. Si vibran al frenar, conviene revisarlos.",
+  frenos: "Las zapatas de un vehículo pesado trabajan mucho. Gastadas, alargan la frenada con carga.",
+  liquido_frenos: "Transmite la fuerza del pedal a los frenos. Absorbe humedad y pierde eficacia con los años.",
+  neumaticos: "Son lo único que toca el suelo. Con el dibujo gastado se pierde agarre con lluvia. Mínimo legal en España: 1,6 mm.",
+  bateria: "Da la corriente para arrancar. Suelen durar entre 4 y 5 años; el frío es cuando más fallan.",
+  itv: "Inspección obligatoria. La frecuencia depende del tipo de vehículo y de su antigüedad.",
+  cadena_lubricado: "La cadena transmite la fuerza a la rueda. Engrasarla a menudo alarga mucho su vida.",
+  cadena_cambio: "Cadena, piñón y corona se cambian juntos. Una cadena muy gastada puede salirse o romperse.",
+  tacografo: "Registra tiempos de conducción y descanso. Su revisión periódica es obligatoria.",
+  anodos: "Piezas de zinc o aluminio que se desgastan en lugar del casco o la hélice por la corrosión.",
+  revision_general: "Revisión anual del motor, bombas de achique y seguridad a bordo, antes de la temporada.",
+};
+const TABS = [["estado", "Estado"], ["que-hacer", "¿Qué hacer?"], ["combustible", "Combustible"], ["gastos", "Gastos"], ["historial", "Historial"], ["ficha", "Ficha"]];
+const EXP_CATS = { seguro: ["Seguro", "🛡️"], parking: ["Parking", "🅿️"], multa: ["Multa", "🚨"], itv: ["ITV", "📋"], lavado: ["Lavado", "🧼"], peaje: ["Peaje", "🛣️"], impuesto: ["Impuesto", "🏛️"], reparacion: ["Reparación", "🔧"], otros: ["Otros", "💶"] };
+const PERIODS = [["month", "Este mes", "este mes"], ["year", "Este año", "este año"], ["last12", "12 meses", "en los últimos 12 meses"], ["all", "Todo", "desde el alta"]];
+const ROLE_LABEL = { owner: "👑 Propietario", regular: "👤 Usuario habitual", company: "🏢 Empresa", mechanic: "🔧 Taller" };
+const ZONE_LABEL = { interior: "🏙️ Interior", costa: "🌊 Costa", montana: "🏔️ Montaña", mixto: "🗺️ Mixto", norte: "🌧️ Norte húmedo" };
+const euros = (n) => `${thousands(n)} €`;
+const dec = (n, d = 1) => n.toFixed(d).replace(".", ",");
+const vehicleById = (id) => myVehicles().find((x) => x.id === id);
+
+function segments(logs) {
+  logs = forConsumption(logs);
+  const s = logs.filter((f) => f.km != null && f.liters != null).sort((a, b) => a.km - b.km);
+  const out = []; let lastFull = null, pending = 0;
+  for (const f of s) {
+    if (lastFull == null) { if (f.full) lastFull = f.km; continue; }
+    pending += f.liters;
+    if (f.full) { const d = f.km - lastFull; if (d > 0) out.push(pending / d * 100); pending = 0; lastFull = f.km; }
+  }
+  return out;
+}
+function consumptionIncrease(logs) {
+  const s = segments(logs); if (s.length < 3) return null;
+  const prev = s.slice(0, -1), avg = prev.reduce((a, b) => a + b, 0) / prev.length, last = s.at(-1);
+  return last > avg * 1.15 ? { last, avg, pct: Math.round((last / avg - 1) * 100) } : null;
+}
+function costSummary(v, period) {
+  const now = today0();
+  const from = { month: new Date(now.getFullYear(), now.getMonth(), 1), year: new Date(now.getFullYear(), 0, 1), last12: new Date(now.getFullYear(), now.getMonth() - 11, 1), all: null }[period];
+  const inP = (s) => { const d = parseD(s); return (!from || d >= from) && d <= now; };
+  const maint = v.records.filter((r) => inP(r.date)).reduce((s, r) => s + (r.cost || 0), 0);
+  const fuel = v.fuelLogs.filter((f) => inP(f.date)).reduce((s, f) => s + (f.total || 0), 0);
+  const cats = {};
+  for (const e of v.expenses.filter((e) => inP(e.date))) cats[e.cat] = (cats[e.cat] || 0) + e.amount;
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const m = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const same = (s) => { const d = parseD(s); return d.getFullYear() === m.getFullYear() && d.getMonth() === m.getMonth(); };
+    months.push({ m, maint: v.records.filter((r) => same(r.date)).reduce((s, r) => s + (r.cost || 0), 0), fuel: v.fuelLogs.filter((f) => same(f.date)).reduce((s, f) => s + (f.total || 0), 0), other: v.expenses.filter((e) => same(e.date)).reduce((s, e) => s + e.amount, 0) });
+  }
+  const other = Object.values(cats).reduce((a, b) => a + b, 0), total = maint + fuel + other;
+  const logs = [...v.kmLogs].sort((a, b) => a.date.localeCompare(b.date));
+  const travelled = logs.length && v.currentKm != null ? v.currentKm - logs[0].km : 0;
+  return { maint, fuel, other, total, cats, months, perKm: period === "all" && travelled >= 100 && total > 0 ? total / travelled : null };
+}
+
+function vDetail() {
+  const v = vehicleById(S.detail.id);
+  if (!v) return `<div class="screen"><div class="appbar sub"><button class="icon-btn" data-act="go" data-to="home" aria-label="Atrás">←</button><h1></h1></div><div class="empty"><div class="em">🔍</div><h3>Este vehículo no está disponible</h3><p>Puede que se haya eliminado.</p><button class="btn" style="width:auto" data-act="go" data-to="home">Volver al inicio</button></div></div>`;
+  const h = healthOf(v), tab = S.detail.tab, boat = v.type === "barco";
+  const fab = { estado: ["Registrar mantenimiento", 5], "que-hacer": ["Registrar mantenimiento", 5], historial: ["Registrar mantenimiento", 5], combustible: ["Registrar repostaje", 6], gastos: ["Añadir gasto", 8] }[tab];
+  const body = { estado: tEstado, "que-hacer": tQueHacer, combustible: tFuel, gastos: tGastos, historial: tHist, ficha: tFicha }[tab](v, h);
+  return `<div class="screen">
+    <div class="appbar sub"><button class="icon-btn" data-act="go" data-to="home" aria-label="Atrás">←</button><h1 style="font-size:17px">${esc(v.brand + " " + v.model)}</h1>
+      ${isOwnerOf(v) ? `<button class="icon-btn" data-act="edit" title="Editar vehículo" aria-label="Editar vehículo">✏️</button>` : ""}
+      <button class="icon-btn" data-act="dmenu" aria-label="Más opciones" aria-expanded="${!!S.detail.menu}">⋮</button></div>
+    <div class="scroll" id="dscroll" style="padding:0 0 96px;gap:0">
+      ${dHeader(v, h, boat)}
+      <div class="tabs" role="tablist">${TABS.map(([id, l]) => `<button role="tab" aria-selected="${tab === id}" class="tab ${tab === id ? "on" : ""}" data-act="tab" data-tab="${id}">${l}${id === "que-hacer" && h.alerts.length ? ` (${h.alerts.length})` : ""}</button>`).join("")}</div>
+      <div class="tabbody">${body}</div>
+    </div>
+    ${fab ? `<button class="fab" data-act="fab" data-p="${fab[1]}" style="${tab === "combustible" ? "background:var(--fuel-light);color:var(--fuel)" : tab === "gastos" ? "background:#ede9fe;color:#7c3aed" : ""}">＋ ${fab[0]}</button>` : ""}
+    ${S.detail.menu ? `<div class="menu" role="menu"><button role="menuitem" data-act="share-open">${isOwnerOf(v) ? "Compartir" : "Quién tiene acceso"}</button><button role="menuitem" data-act="remove" style="color:var(--danger)">${isOwnerOf(v) ? "Eliminar vehículo" : "Dejar de ver este vehículo"}</button></div>` : ""}
+  </div>`;
+}
+function dHeader(v, h, boat) {
+  const pct = h.pct, color = pct == null ? "" : pct > 70 ? "var(--ok)" : pct > 40 ? "var(--warning)" : "var(--danger)";
+  const maint = v.records.reduce((s, r) => s + (r.cost || 0), 0), fuel = v.fuelLogs.reduce((s, f) => s + (f.total || 0), 0);
+  const [annual, measured] = annualKm(v);
+  const latest = v.kmLogs.map((l) => l.date).sort().at(-1), days = latest ? dayDiff(today0(), parseD(latest)) : null;
+  return `<div style="padding:16px;display:grid;gap:12px">
+    <div class="vhead"><span style="font-size:34px">${typeOf(v.type)[2]}</span><div class="col" style="flex:1"><span class="vname" style="font-size:20px">${esc(v.brand + " " + v.model)}</span>
+      <span class="vsub">${esc([v.year, v.engine, v.plate, v.fuelType].filter(Boolean).join(" · "))}</span></div>
+      ${pct != null ? `<div class="score"><b style="color:${color};font-size:26px">${pct}%</b><span>salud</span></div>` : ""}</div>
+    <div class="chips"><span class="chip t-neutral">${isOwnerOf(v) ? (ROLE_LABEL[v.ownerRole] || ROLE_LABEL.owner) : ROLE_LABEL[accessOf(v)] + " · compartido"}</span>${isOwnerOf(v) && v.members?.length ? `<span class="chip t-neutral">👥 ${v.members.length}</span>` : ""}${boat ? "" : `<span class="chip t-neutral">${ZONE_LABEL[v.zone]}</span>`}${v.usage ? `<span class="chip t-neutral">🛣️ ${esc(v.usage)}</span>` : ""}</div>
+    <div class="stats">${boat ? "" : `<div class="stat"><small>KM</small><b>${v.currentKm != null ? thousands(v.currentKm) : "—"}</b></div><div class="stat"><small>KM/AÑO${measured ? " ✓" : ""}</small><b style="${measured ? "color:var(--ok)" : ""}">${thousands(annual)}</b></div>`}
+      <div class="stat"><small>MANTEN.</small><b>${maint ? euros(maint) : "—"}</b></div><div class="stat"><small>COMBUSTIBLE</small><b style="color:var(--fuel)">${fuel ? euros(fuel) : "—"}</b></div></div>
+    ${h.alerts.length ? `<button class="hbanner t-${h.danger ? "danger" : "warning"}" data-act="tab" data-tab="que-hacer"><span>⚠️ ${plural(h.alerts.length, "mantenimiento pendiente", "mantenimientos pendientes")}</span><span>¿Qué hago? →</span></button>` : ""}
+    ${!boat && h.kmDue ? `<button class="hbanner t-info" data-act="km" data-id="${v.id}"><span>📍 ${days == null ? "Aún no hay lecturas de km" : `${days} días sin anotar los km`}</span><span>Actualizar →</span></button>` : ""}
+  </div>`;
+}
+const progressBar = (s) => `<div class="pbar"><i style="width:${s.status === "unknown" ? 0 : Math.min(100, s.progress * 100)}%;background:${{ danger: "var(--danger)", warning: "var(--warning)", ok: "var(--ok)", unknown: "var(--border)" }[s.status]}"></i></div>`;
+function intervalText(it) {
+  const p = [it.km ? `cada ${fmtKm(it.km)}` : null, it.mo ? (it.mo % 12 === 0 ? `cada ${plural(it.mo / 12, "año", "años")}` : `cada ${it.mo} meses`) : null].filter(Boolean);
+  return `Recomendado ${p.join(" o ")}${p.length > 1 ? " (lo que llegue antes)" : ""}.`;
+}
+function tEstado(v, h) {
+  const [annual, measured] = annualKm(v);
+  const groups = {};
+  for (const s of h.states) (groups[s.item.cat] ||= []).push(s);
+  const zoneNote = { costa: "🌊 Sal y humedad envejecen antes el caucho: te avisamos antes.", montana: "🏔️ Frío, nieve y curvas desgastan más: te avisamos antes.", norte: "🌧️ Con lluvia frecuente, vigila el dibujo y el drenaje.", mixto: "🗺️ Uso variado: revisa que el desgaste sea parejo." }[v.zone];
+  return (v.type === "barco" ? `<div class="card">⛵ En embarcaciones el mantenimiento se controla por tiempo, no por kilómetros.</div>`
+    : `<button class="card" data-act="km" data-id="${v.id}" style="display:flex;gap:12px;align-items:center"><span style="font-size:20px">📍</span><span class="col" style="flex:1"><b style="font-size:16px">${v.currentKm != null ? fmtKm(v.currentKm) : "Sin kilometraje"}</b><span class="vsub" style="font-size:12.5px">${fmtKm(annual)}/año ${measured ? "según tus lecturas" : "estimados"} · ${plural(v.kmLogs.length, "lectura", "lecturas")}</span></span><span class="link">Actualizar</span></button>`) +
+    Object.entries(groups).map(([cat, list]) => `<h3 class="tsec">${esc(cat)}</h3>` + list.map((s) => `
+      <div class="card icard"><div class="row"><span>${s.item.icon}</span><b class="grow" style="font-weight:600">${esc(s.item.name)}</b><span class="badge t-${s.status === "unknown" ? "neutral" : s.status}">${LABEL[s.status]}</span></div>
+      ${progressBar(s)}
+      ${s.item.id === "neumaticos" && zoneNote ? `<div class="znote">${zoneNote}</div>` : ""}
+      <div class="kmlog"><span>${s.last ? `Último: ${fmtDate(s.last.date)}${s.last.km != null ? " · " + fmtKm(s.last.km) : ""}` : "Sin registrar aún"}</span><span>${[s.nextKm != null ? fmtKm(s.nextKm) : null, s.nextDate ? fmtDate(iso(s.nextDate)) : null].filter(Boolean).length ? "Próximo: " + [s.nextKm != null ? fmtKm(s.nextKm) : null, s.nextDate ? fmtDate(iso(s.nextDate)) : null].filter(Boolean).join(" · ") : ""}</span></div>
+      ${s.hint ? `<div class="kmlog"><span>📋 ${esc(s.hint)}</span></div>` : !s.last ? `<div class="kmlog"><span>${intervalText(s.item)}</span></div>` : ""}</div>`).join("")).join("");
+}
+function tQueHacer(v, h) {
+  const urgent = h.alerts, unknown = h.states.filter((s) => s.status === "unknown").length, known = h.states.length - unknown;
+  if (!urgent.length) return known === 0
+    ? `<div class="empty"><div class="em">📋</div><h3>Aún no hay mantenimientos registrados</h3><p>Registra lo último que le hicieron (aceite, ITV, neumáticos…) y te diremos qué toca y cuándo.</p><button class="btn" style="width:auto" data-act="fab" data-p="5">Registrar mantenimiento</button></div>`
+    : `<div class="empty"><div class="em">🟢</div><h3>Todo en orden</h3><p>${unknown ? `Nada urgente en lo registrado. Hay ${plural(unknown, "elemento", "elementos")} sin registrar.` : "No hay revisiones pendientes. ¡Buen trabajo!"}</p></div>`;
+  const danger = urgent.some((s) => s.status === "danger");
+  return `<div class="card" style="background:var(--${danger ? "danger" : "warning"}-light);border-color:var(--${danger ? "danger" : "warning"}-border)"><b style="color:var(--${danger ? "danger" : "warning"})">${danger ? "🔴 Revisión urgente" : "🟡 Próximas revisiones"}</b><div class="vsub">Toca cada elemento para saber qué es y qué hacer.</div><button class="link" style="padding:6px 0;color:var(--${danger ? "danger" : "warning"})" data-act="reg-open" data-items="${urgent.map((s) => s.item.id).join(",")}">✓ ${urgent.length === 1 ? "Ya está hecho: registrarlo" : "Ya están hechos: registrarlos"}</button></div>` +
+    urgent.map((s) => {
+      const open = S.detail.expanded === s.item.id, d = s.status === "danger";
+      const when = [s.nextKm != null ? `${d ? "tocaba" : "toca"} a los ${fmtKm(s.nextKm)}` : null, s.nextDate ? `${d ? "venció el" : "vence el"} ${fmtDate(iso(s.nextDate))}` : null].filter(Boolean).join(" o ");
+      return `<button class="card icard" data-act="expand" data-id="${s.item.id}" aria-expanded="${open}" style="border-color:var(--${s.status}-border)">
+        <div class="row"><span style="font-size:20px">${s.item.icon}</span><span class="col grow"><b>${esc(s.item.name)}</b><span class="vsub" style="font-size:12px">${s.last ? "Último: " + fmtDate(s.last.date) : "Nunca registrado"}</span></span><span class="badge t-${s.status}">${LABEL[s.status]}</span><span>${open ? "▴" : "▾"}</span></div>
+        ${open ? `<div class="help"><b>¿Qué es esto?</b><p>${esc(HELP[s.item.id] || "Revisión recomendada para este tipo de vehículo.")}</p>${s.hint ? `<p>📋 ${esc(s.hint)}</p>` : ""}</div><b style="color:var(--${s.status});font-size:13px">👉 ${d ? "Hazlo cuanto antes" : "Prográmalo pronto"}${when ? ": " + when : ""}.</b><span class="link" style="justify-self:end" data-act="reg-open" data-items="${s.item.id}" role="button" tabindex="0">✓ Ya está hecho</span>` : ""}</button>`;
+    }).join("") +
+    `<div class="card" style="background:var(--info-light);border-color:var(--info-border)"><b style="color:var(--primary)">💡 Consejo</b><p class="vsub" style="line-height:1.5">Lleva esta lista a tu taller y pide que revisen exactamente estos puntos. Después, regístralo para que los avisos se reinicien.</p><div style="text-align:right"><button class="link" data-act="copy-list">📋 Copiar lista para el taller</button></div></div>`;
+}
+function tFuel(v) {
+  const logs = [...v.fuelLogs].sort((a, b) => b.date.localeCompare(a.date));
+  const ev = v.fuelType === "Eléctrico";
+  if (!logs.length) return `<div class="empty"><div class="em">${ev ? "🔌" : "⛽"}</div><h3>${ev ? "Sin recargas registradas" : "Sin repostajes registrados"}</h3><p>${ev ? "Anota cada recarga con los km y los kWh. Con dos cargas completas" : "Anota cada repostaje con los km y los litros. Con dos depósitos llenos"} calcularemos tu consumo real.</p><button class="btn" style="width:auto" data-act="fab" data-p="6">${ev ? "Registrar recarga" : "Registrar repostaje"}</button></div>`;
+  const unitC = consUnit(logs), unit = unitC === "L/100" ? "L" : "kWh";
+  const spend = logs.reduce((s, f) => s + (f.total || 0), 0), qty = forConsumption(logs).reduce((s, f) => s + (f.liters || 0), 0);
+  const year = today0().getFullYear(), ySpend = logs.filter((f) => f.date.startsWith(year + "-")).reduce((s, f) => s + (f.total || 0), 0);
+  const kms = logs.map((f) => f.km).filter((k) => k != null).sort((a, b) => a - b), range = kms.length > 1 ? kms.at(-1) - kms[0] : 0;
+  const avg = averageConsumption(v.fuelLogs), inc = consumptionIncrease(v.fuelLogs);
+  return `<div class="stats"><div class="stat"><small>GASTO TOTAL</small><b style="color:var(--fuel)">${euros(spend)}</b></div><div class="stat"><small>${unit === "L" ? "LITROS" : "ENERGÍA"}</small><b>${thousands(qty)} ${unit}</b></div><div class="stat"><small>CONSUMO MEDIO</small><b>${avg != null ? dec(avg) + " " + unitC : "—"}</b></div></div>
+    <div class="stats"><div class="stat"><small>ESTE AÑO</small><b>${euros(ySpend)}</b></div><div class="stat"><small>COSTE CADA 100 KM</small><b>${range > 0 && spend > 0 ? money(spend / range * 100) : "—"}</b></div></div>
+    ${avg == null ? `<div class="vsub" style="font-size:12px">El consumo medio aparece cuando hay dos ${unit === "L" ? "repostajes con el depósito lleno" : "cargas completas"} con los km.</div>` : ""}
+    ${inc ? banner(`El último ${unit === "L" ? "depósito" : "tramo"} ha gastado ${dec(inc.last)} ${unitC}, un ${inc.pct} % más que tu media (${dec(inc.avg)}). Revisa la presión de los neumáticos y el filtro de aire.`, "info") : ""}
+    <h3 class="tsec">${ev ? "Recargas" : "Repostajes"}</h3>` + logs.map((f) => {
+      const u = isEv(f) ? "kWh" : "L", price = f.price ?? (f.total && f.liters ? f.total / f.liters : null);
+      return `<div class="card icard"><div class="row"><span class="col grow"><b>${isEv(f) ? "🔌 Recarga" : esc(f.fuelType || v.fuelType || "Repostaje")} · ${f.full ? (isEv(f) ? "Completa" : "Lleno") : "Parcial"}</b><span class="vsub" style="font-size:12px">${[fmtDate(f.date), f.km != null ? fmtKm(f.km) : null, f.liters != null ? dec(f.liters, 2) + " " + u : null, price != null ? dec(price, 3) + " €/" + u : null, f.station].filter(Boolean).map(esc).join(" · ")}</span></span><b style="color:var(--fuel)">${f.total ? money(f.total) : ""}</b><button class="icon-btn" data-act="fdel" data-id="${f.id}" aria-label="Eliminar" title="Eliminar">🗑</button></div></div>`;
+    }).join("");
+}
+function tGastos(v) {
+  const p = S.detail.period, s = costSummary(v, p), phrase = PERIODS.find((x) => x[0] === p)[2];
+  const maxM = Math.max(...s.months.map((m) => m.maint + m.fuel + m.other), 0);
+  const L = ["E", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+  return `<div class="chips">${PERIODS.map(([id, l]) => `<button class="pill ${id === p ? "sel" : ""}" data-act="period" data-v="${id}" aria-pressed="${id === p}">${l}</button>`).join("")}</div>
+    <div class="card" style="background:var(--info-light);border-color:var(--info-border);display:flex;align-items:center"><span class="col grow"><span class="vsub">Gasto total ${phrase}</span><b style="font-size:28px;color:var(--primary)">${euros(s.total)}</b></span>${s.perKm != null ? `<span class="col" style="text-align:right"><b>${dec(s.perKm, 2)} €/km</b><span class="vsub" style="font-size:11px">coste por km</span></span>` : ""}</div>
+    <div class="stats"><div class="stat"><small>MANTENIMIENTO</small><b style="color:var(--primary)">${euros(s.maint)}</b></div><div class="stat"><small>COMBUSTIBLE</small><b style="color:var(--fuel)">${euros(s.fuel)}</b></div><div class="stat"><small>OTROS</small><b style="color:#7c3aed">${euros(s.other)}</b></div></div>
+    ${s.total === 0 ? `<div class="empty"><div class="em">💶</div><h3>Sin gastos ${phrase}</h3><p>Aquí se suman mantenimientos, repostajes y otros gastos como el seguro o el parking.</p></div>` : ""}
+    ${Object.keys(s.cats).length ? `<h3 class="tsec">Otros gastos</h3><div class="card" style="display:grid;gap:10px">${Object.entries(s.cats).sort((a, b) => b[1] - a[1]).map(([c, a]) => `<div><div class="row"><span>${EXP_CATS[c]?.[1] || "💶"}</span><span class="grow">${EXP_CATS[c]?.[0] || c}</span><span class="vsub" style="font-size:12.5px;font-weight:600">${euros(a)} · ${Math.round(a / s.total * 100)} %</span></div><div class="pbar"><i style="width:${a / s.total * 100}%;background:#7c3aed"></i></div></div>`).join("")}</div>` : ""}
+    ${maxM > 0 ? `<h3 class="tsec">Últimos 12 meses</h3><div class="card"><div class="chips" style="font-size:11px;color:var(--text-soft)"><span>🟦 Mantenimiento</span><span style="color:var(--fuel)">■ Combustible</span><span style="color:#7c3aed">■ Otros</span></div>
+      <div class="bars">${s.months.map((m) => { const hh = (x) => x / maxM * 100; return `<div class="barcol" title="${fmtDate(iso(m.m)).slice(3)}: ${euros(m.maint + m.fuel + m.other)}"><div class="bar1">${m.other ? `<i style="height:${hh(m.other)}px;background:#7c3aed"></i>` : ""}${m.fuel ? `<i style="height:${hh(m.fuel)}px;background:var(--fuel)"></i>` : ""}${m.maint ? `<i style="height:${hh(m.maint)}px;background:var(--primary)"></i>` : ""}</div><small>${L[m.m.getMonth()]}</small></div>`; }).join("")}</div></div>` : ""}`;
+}
+function itemsFor(v) { const t = v.type; return ((t === "moto" || t === "quad") ? PLANS.moto : (t === "camion" || t === "autobus") ? PLANS.truck : t === "barco" ? PLANS.boat : PLANS.car); }
+function histList(v) {
+  const items = Object.fromEntries(itemsFor(v).map((i) => [i.id, i]));
+  const q = norm(S.detail.q || ""), cat = S.detail.cat;
+  const nameOf = (r) => items[r.itemId]?.name || r.name || r.itemId;
+  const list = [...v.records].filter((r) => (!cat || (items[r.itemId]?.cat || "Otros") === cat) && (!q || norm([nameOf(r), r.notes || "", fmtDate(r.date)].join(" ")).includes(q))).sort((a, b) => b.date.localeCompare(a.date));
+  const total = list.reduce((s, r) => s + (r.cost || 0), 0);
+  return `<div class="vsub" style="font-size:12.5px">${plural(list.length, "registro", "registros")}${total ? " · " + euros(total) : ""}</div>` +
+    (list.length ? list.map((r) => `<div class="card icard" data-act="hopen" data-id="${r.id}" style="cursor:pointer"><div class="row"><span>${items[r.itemId]?.icon || "🔧"}</span><span class="col grow"><b>${esc(items[r.itemId]?.name || r.name || r.itemId)}</b><span class="vsub" style="font-size:12px">${[fmtDate(r.date), r.km != null ? fmtKm(r.km) : null, r.notes, r.photos?.length ? "📷 " + r.photos.length : null].filter(Boolean).map(esc).join(" · ")}</span></span>${r.cost ? `<b style="color:var(--ok)">${r.estimated ? "≈ " : ""}${money(r.cost)}</b>` : ""}<button class="icon-btn" data-act="hdel" data-id="${r.id}" aria-label="Eliminar registro" title="Eliminar registro">🗑</button></div></div>`).join("")
+      : `<div class="empty"><div class="em">🔎</div><h3>Sin resultados</h3><p>Prueba con otra búsqueda o quita el filtro.</p></div>`);
+}
+function tHist(v) {
+  if (!v.records.length) return `<div class="empty"><div class="em">📋</div><h3>Sin registros</h3><p>Cada mantenimiento que registres aparecerá aquí, con su fecha, sus km y lo que costó.</p><button class="btn" style="width:auto" data-act="fab" data-p="5">Registrar mantenimiento</button></div>`;
+  const items = Object.fromEntries(itemsFor(v).map((i) => [i.id, i]));
+  const cats = [...new Set(v.records.map((r) => items[r.itemId]?.cat || "Otros"))].sort();
+  return `<div class="input-wrap"><input class="input" id="h-q" placeholder="🔎 Buscar en el historial…" value="${esc(S.detail.q || "")}" aria-label="Buscar en el historial"></div>
+    ${cats.length > 1 ? `<div class="chips"><button class="pill ${!S.detail.cat ? "sel" : ""}" data-act="hcat" data-v="">Todos</button>${cats.map((c) => `<button class="pill ${S.detail.cat === c ? "sel" : ""}" data-act="hcat" data-v="${esc(c)}">${esc(c)}</button>`).join("")}</div>` : ""}
+    <div id="h-list" style="display:grid;gap:10px">${histList(v)}</div>`;
+}
+function tFicha(v) {
+  const e = S.detail.specEdit, dd = { type: v.type, fuelType: v.fuelType };
+  if (S.detail.specBusy) return `<div style="display:grid;place-items:center;gap:12px;padding:40px 0" role="status"><span class="spinner" style="width:28px;height:28px;color:var(--primary)"></span>Consultando especificaciones…</div>`;
+  if (e) return (e.source === "ia" ? banner("Datos orientativos generados por IA (en la demo, valores de ejemplo). Revísalos antes de guardar.", "info") : "") +
+    specFieldsFor(dd).map(([k, l, ic, hint]) => field("s2-" + k, `${ic} ${l}`, { value: e.values[k] || "", hint, v: k === "oil_liters" ? "liters" : "", mode: k === "oil_liters" ? "decimal" : "" })).join("") +
+    `<div class="row"><button class="btn outline grow" data-act="spec-cancel">Cancelar</button><button class="btn" style="flex:2" data-act="spec-save">Guardar ficha</button></div>`;
+  if (!v.specs) return `<div class="empty"><div class="em">📄</div><h3>Añade la ficha técnica</h3><p>Aceite, filtros, neumáticos y batería: lo que necesitas al ir al taller o comprar recambios.</p></div>
+    <button class="btn" data-act="spec-ai2">🤖 Generar con IA</button><button class="btn outline" data-act="spec-edit" data-blank="1">Rellenar a mano</button>`;
+  return (v.specs.source === "ia" ? banner("Datos orientativos generados por IA. Compruébalos en el manual o con tu taller antes de comprar recambios.", "info") : "") +
+    `<div class="card" style="padding:4px 16px">${specFieldsFor(dd).map(([k, l, ic]) => `<div class="srow"><span>${ic}</span><span class="grow vsub">${l}</span><b style="${v.specs.values[k] ? "" : "color:var(--text-soft);font-weight:400"}">${esc(v.specs.values[k] ? v.specs.values[k] + (k === "oil_liters" ? " L" : "") : "—")}</b></div>`).join("")}</div>
+    <div class="chips"><button class="link" data-act="spec-copy">📋 Copiar</button><button class="link" data-act="spec-edit">✏️ Editar</button><button class="link" data-act="spec-ai2">🤖 Generar de nuevo</button><button class="link" data-act="spec-remove" style="color:var(--danger)">🗑 Quitar</button></div>`;
+}
+
+function vEdit() {
+  const e = S.edit, d = e.d, boat = d.type === "barco";
+  return `<div class="screen">
+    <div class="appbar sub"><button class="icon-btn" data-act="edit-cancel" aria-label="Atrás">←</button><h1>Editar vehículo</h1></div>
+    <div class="scroll">
+      <div class="field"><label class="label" for="e-type">Tipo</label><select class="input" id="e-type">${TYPES.map(([id, l, em]) => `<option value="${id}" ${d.type === id ? "selected" : ""}>${em}  ${l}</option>`).join("")}</select></div>
+      ${datalist("dl-ebrand", brandsFor(d.type))}${datalist("dl-emodel", modelsFor(d.type, d.brand))}${datalist("dl-eengine", enginesFor(d.brand, d.model, d.type))}
+      ${field("e-brand", "Marca", { value: d.brand, list: "dl-ebrand", v: "brand" })}
+      ${field("e-model", "Modelo", { value: d.model, list: "dl-emodel", v: "model" })}
+      <div class="grid2">${field("e-year", "Año", { value: d.year, mode: "numeric", max: 4, v: "year" })}${field("e-plate", boat ? "Matrícula / folio" : "Matrícula", { value: d.plate, max: 15, style: "text-transform:uppercase" })}</div>
+      ${field("e-engine", "Motorización", { value: d.engine, list: "dl-eengine" })}
+      <div><span class="label">Combustible</span>${pills("edit-fuel", boat ? ["Gasolina", "Diésel", "Eléctrico"] : ["Gasolina", "Diésel", "Híbrido", "Híbrido enchufable", "Eléctrico", "GLP"], d.fuelType)}</div>
+      ${boat ? "" : `<div><span class="label">Uso principal</span>${pills("edit-usage", ["Ciudad", "Carretera", "Mixto", "Profesional"], d.usage)}</div>
+        ${field("e-annual", "Km al año (opcional)", { value: d.annualKm, mode: "numeric", suffix: "km/año", max: 7, v: "annualKm", help: "Solo se usa hasta que haya lecturas de km de más de un mes." })}
+        <div><span class="label">Zona por la que circula</span><div class="chips">${ZONES.map(([id, em, t]) => `<button class="pill ${d.zone === id ? "sel" : ""}" data-act="edit-zone" data-v="${id}">${em} ${t}</button>`).join("")}</div></div>`}
+      <div><span class="label">Tu relación con el vehículo</span><div class="chips">${ROLES.map(([id, em, t]) => `<button class="pill ${d.role === id ? "sel" : ""}" data-act="edit-role" data-v="${id}">${em} ${t}</button>`).join("")}</div></div>
+      ${boat ? "" : `<p class="help">Los km actuales se cambian desde «Actualizar kilometraje» en el detalle, para que cada lectura quede en el historial.</p>`}
+    </div>
+    <div class="foot">${banner(e.error)}<button class="btn" data-act="edit-save" id="edit-save" ${JSON.stringify(d) === e.orig ? "disabled" : ""}>Guardar cambios</button></div></div>`;
+}
+const draftOf = (v) => ({ type: v.type, brand: v.brand, model: v.model, year: String(v.year || ""), engine: v.engine || "", plate: v.plate || "", fuelType: v.fuelType || "", usage: v.usage || "", annualKm: v.annualKm != null ? String(v.annualKm) : "", zone: v.zone || "interior", role: v.ownerRole || "owner" });
+const editDirty = () => JSON.stringify(S.edit.d) !== S.edit.orig;
+function openDetail(id, tab = "estado") { S.detail = { id, tab, period: "year", q: "", cat: null, expanded: null, specEdit: null, menu: false }; go("detail"); }
+
+
+/* ═══════════ Punto 5: registrar mantenimientos ═══════════ */
+function parseCost(text) {
+  let t = String(text).replace(/€/g, "").replace(/\s/g, "");
+  if (!t) return null;
+  if (t.includes(",")) t = t.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(t)) t = t.replace(/\./g, "");
+  const n = Number(t); return Number.isFinite(n) ? n : null;
+}
+const costError = (t) => !String(t).trim() ? null : parseCost(t) == null ? "Escribe un número" : (parseCost(t) < 0 || parseCost(t) > 99999) ? "Entre 0 y 99.999 €" : null;
+const money = (n) => { const c = Math.round(n * 100), w = Math.trunc(c / 100), f = Math.abs(c % 100); return f ? `${thousands(w)},${String(f).padStart(2, "0")} €` : `${thousands(w)} €`; };
+function regKmError(r, v) {
+  const t = String(r.km).replace(/[.\s]/g, ""); if (!t) return null;
+  if (!/^\d+$/.test(t)) return "Escribe solo números";
+  const km = Number(t); if (km > 3000000) return "Parece demasiado. Revísalo";
+  let before = null, after = null;
+  for (const l of v.kmLogs) {
+    if (l.date <= r.date && l.km > km && (!before || l.km > before.km)) before = l;
+    if (l.date > r.date && l.km < km && (!after || l.km < after.km)) after = l;
+  }
+  if (before) return `Menos que una lectura anterior (${fmtKm(before.km)} el ${fmtDate(before.date)})`;
+  if (after) return `Más que una lectura posterior (${fmtKm(after.km)} el ${fmtDate(after.date)})`;
+  return null;
+}
+/* Precios orientativos de taller en España (pieza + mano de obra, IVA
+   incluido). Solo se usa la proporción para repartir un total. */
+const REF = {
+  car: { aceite: 75, filtro_aceite: 15, filtro_aire: 33, filtro_combustible: 60, bujias: 90, correa_distribucion: 415, refrigerante: 70, filtro_habitaculo: 30, frenos_delanteros: 115, frenos_traseros: 100, discos_delanteros: 230, liquido_frenos: 50, neumaticos: 454, bateria: 130, itv: 43 },
+  moto: { aceite: 55, filtro_aceite: 15, filtro_aire: 30, bujias: 45, cadena_lubricado: 10, cadena_cambio: 190, frenos_delanteros: 70, frenos_traseros: 60, liquido_frenos: 40, neumaticos: 260, bateria: 70, itv: 30 },
+  truck: { aceite: 380, filtro_aceite: 70, filtro_aire: 120, filtro_combustible: 90, refrigerante: 250, correa_distribucion: 900, frenos: 600, liquido_frenos: 120, neumaticos: 2600, bateria: 450, tacografo: 120, itv: 110 },
+  boat: { aceite: 120, filtro_aceite: 25, filtro_combustible: 50, anodos: 110, bateria: 180, revision_general: 300 },
+};
+function refPrice(id, t) {
+  const table = (t === "moto" || t === "quad") ? REF.moto : (t === "camion" || t === "autobus") ? REF.truck : t === "barco" ? REF.boat : REF.car;
+  const f = { furgoneta: 1.15, todoterreno: 1.15, caravana: 1.25, autobus: 1.2 }[t] || 1;
+  return table[id] == null ? null : table[id] * f;
+}
+/* Reparte en céntimos; lo que sobra del redondeo va al trabajo más caro. */
+function splitTotal(total, lines, t) {
+  if (!lines.length) return {};
+  const known = lines.map((l) => refPrice(l.itemId, t)).filter((x) => x != null).sort((a, b) => a - b);
+  const fb = known.length ? known[Math.floor(known.length / 2)] : 100;
+  const w = Object.fromEntries(lines.map((l) => [l.key, refPrice(l.itemId, t) ?? fb]));
+  const sum = Object.values(w).reduce((a, b) => a + b, 0), tc = Math.round(total * 100);
+  const c = Object.fromEntries(Object.entries(w).map(([k, x]) => [k, Math.floor(tc * x / sum)]));
+  const big = Object.entries(w).reduce((a, b) => b[1] > a[1] ? b : a)[0];
+  c[big] += tc - Object.values(c).reduce((a, b) => a + b, 0);
+  return Object.fromEntries(Object.entries(c).map(([k, x]) => [k, x / 100]));
+}
+function regCosts(r, v) {
+  if (r.costMode !== "total") return Object.fromEntries(r.lines.map((l) => [l.key, parseCost(l.cost)]));
+  const t = parseCost(r.total); if (t == null || costError(r.total)) return Object.fromEntries(r.lines.map((l) => [l.key, null]));
+  return splitTotal(t, r.lines, v.type);
+}
+const regEstimated = (r) => r.costMode === "total" && r.lines.length > 1 && parseCost(r.total) != null && !costError(r.total);
+function regValidate(r, v) {
+  if (!r.lines.length) return "Marca al menos un trabajo.";
+  if (r.date > iso(today0())) return "La fecha no puede ser futura.";
+  const k = v.type !== "barco" && regKmError(r, v); if (k) return k;
+  if (r.costMode === "total" && costError(r.total)) return "Revisa el coste total.";
+  for (const l of r.lines) {
+    if (l.itemId === "otro" && !l.name.trim()) return "Escribe el nombre de cada «otro trabajo».";
+    if (r.costMode !== "total" && costError(l.cost)) return `Revisa el coste de ${l.name || "otro trabajo"}.`;
+  }
+  return null;
+}
+function openReg(vid, ids = []) {
+  const v = vehicleById(vid), plan = planFor(v);
+  S.reg = { vid, costMode: "item", total: "", date: iso(today0()), km: v.type === "barco" || v.currentKm == null ? "" : String(v.currentKm), kmTouched: false, notes: "", error: null, busy: false,
+    lines: plan.filter((i) => ids.includes(i.id)).map((i) => ({ key: i.id, itemId: i.id, name: i.name, icon: i.icon, cost: "", photos: [] })) };
+  go("reg");
+}
+const regTotal = (r) => r.costMode === "total" ? (costError(r.total) ? 0 : parseCost(r.total) || 0) : r.lines.reduce((s, l) => s + (parseCost(l.cost) || 0), 0);
+const regSummary = (r) => r.lines.length ? [plural(r.lines.length, "trabajo", "trabajos"), ...(regTotal(r) > 0 ? [(regEstimated(r) ? "total " : "") + money(regTotal(r))] : []), ...(r.lines.some((l) => l.photos.length) ? [plural(r.lines.reduce((s, l) => s + l.photos.length, 0), "foto", "fotos")] : [])].join(" · ") : "";
+function costPhotos(l, est) {
+  const byTotal = S.reg.costMode === "total";
+  return `<div class="row" style="align-items:flex-start;gap:12px">
+    ${byTotal ? `<div class="field" style="width:118px;flex:none"><span class="label">Coste aprox.</span><div class="est" id="re-${l.key}" title="Reparto estimado del total">${est != null ? "≈ " + money(est) : "—"}</div></div>`
+      : `<div class="field" style="width:118px;flex:none"><label class="label" for="rc-${l.key}">Coste</label><div class="input-wrap"><input class="input" id="rc-${l.key}" inputmode="decimal" value="${esc(l.cost)}" maxlength="9" placeholder="0" style="height:42px"><span class="suffix">€</span></div><div class="err" id="rc-${l.key}-err">${esc(costError(l.cost) || "")}</div></div>`}
+    <div class="chips" style="flex:1;padding-top:20px">${l.photos.map((p, i) => `<span class="thumb"><img src="${p}" alt="Foto ${i + 1}"><button data-act="reg-delphoto" data-key="${l.key}" data-i="${i}" aria-label="Quitar foto">✕</button></span>`).join("")}
+      ${l.photos.length < 6 ? `<label class="pill" style="display:inline-flex;align-items:center;gap:6px;height:42px">📷 Foto<input type="file" accept="image/*" data-photo="${l.key}" hidden></label>` : ""}</div></div>`;
+}
+function vReg() {
+  const r = S.reg, v = vehicleById(r.vid), boat = v.type === "barco", plan = planFor(v), h = healthOf(v);
+  const st = Object.fromEntries(h.states.map((s) => [s.item.id, s]));
+  const groups = {}; for (const i of plan) (groups[i.cat] ||= []).push(i);
+  const pend = h.alerts.map((s) => s.item.id), kmErr = boat ? null : regKmError(r, v), today = iso(today0());
+  const n = r.lines.length, est = regCosts(r, v);
+  return `<div class="screen">
+    <div class="appbar sub"><button class="icon-btn" data-act="reg-cancel" aria-label="Atrás">←</button><h1>Registrar mantenimiento</h1></div>
+    <div class="scroll">
+      <div class="vsub" style="font-weight:600">${typeOf(v.type)[2]} ${esc(v.brand + " " + v.model)}</div>
+      <div class="grid2">
+        <div class="field"><label class="label" for="r-date">Fecha</label><input class="input" type="date" id="r-date" max="${today}" value="${r.date}"></div>
+        ${boat ? "" : `<div class="field"><label class="label" for="r-km">Km (opcional)</label><div class="input-wrap"><input class="input ${kmErr ? "bad" : ""}" id="r-km" inputmode="numeric" maxlength="7" value="${esc(r.km)}" placeholder="${r.date === today ? "" : "¿Cuántos tenía?"}"><span class="suffix">km</span></div><div class="err" id="r-km-err">${esc(kmErr || "")}</div></div>`}
+      </div>
+      ${!boat ? `<div class="help" id="r-km-help" style="margin-top:-6px;${r.km && !kmErr ? "" : "display:none"}">Se guardará también como lectura de kilometraje.</div>` : ""}
+      <div class="row" style="margin-top:6px"><h3 class="tsec grow" style="margin:0">¿Qué se ha hecho?</h3>
+        ${pend.length ? `<button class="link" style="color:var(--danger)" data-act="reg-pending">⚠️ Pendientes (${pend.length})</button>` : ""}${n ? `<button class="link" data-act="reg-none">Quitar todo</button>` : ""}</div>
+      <p class="vsub" style="margin:-4px 0 0;line-height:1.4">Marca lo que te han hecho. En cada trabajo puedes añadir el coste y fotos (factura, pieza cambiada…).</p>
+      <div class="seg" role="radiogroup" aria-label="Cómo indicar el coste"><button role="radio" aria-checked="${r.costMode !== "total"}" class="${r.costMode !== "total" ? "on" : ""}" data-act="reg-mode" data-m="item">Coste por trabajo</button><button role="radio" aria-checked="${r.costMode === "total"}" class="${r.costMode === "total" ? "on" : ""}" data-act="reg-mode" data-m="total">Solo sé el total</button></div>
+      ${r.costMode === "total" ? `<div class="field"><label class="label" for="r-total">Coste total de todo</label><div class="input-wrap"><input class="input ${costError(r.total) ? "bad" : ""}" id="r-total" inputmode="decimal" maxlength="9" value="${esc(r.total)}" placeholder="Ej.: 250"><span class="suffix">€</span></div><div class="err" id="r-total-err">${esc(costError(r.total) || "")}</div><div class="help">Lo repartimos entre los trabajos según precios medios de taller en España. Es aproximado: en el historial se verá con «≈».</div></div>` : ""}
+      ${Object.entries(groups).map(([cat, items]) => `<div class="label" style="margin:10px 0 0">${esc(cat)}</div><div class="card" style="padding:0;overflow:hidden">${items.map((i, idx) => {
+        const l = r.lines.find((x) => x.key === i.id), s = st[i.id];
+        return `<div style="${idx ? "border-top:1px solid var(--border);" : ""}${l ? "background:var(--info-light)" : ""}">
+          <button class="checkrow" data-act="reg-toggle" data-id="${i.id}" role="checkbox" aria-checked="${!!l}"><span class="cbox ${l ? "on" : ""}">${l ? "✓" : ""}</span><span>${i.icon}</span><span class="col grow" style="text-align:left"><b style="font-weight:${l ? 700 : 500}">${esc(i.name)}</b><span class="vsub" style="font-size:11.5px">${s?.last ? "Último: " + fmtDate(s.last.date) : "Sin registrar"}</span></span>${s && (s.status === "danger" || s.status === "warning") ? `<span class="dot" style="background:var(--${s.status})" title="${LABEL[s.status]}"></span>` : ""}</button>
+          ${l ? `<div style="padding:0 16px 12px">${costPhotos(l, est[l.key])}</div>` : ""}</div>`;
+      }).join("")}</div>`).join("")}
+      <div class="label" style="margin:10px 0 0">Otros trabajos</div>
+      ${r.lines.filter((l) => l.itemId === "otro").map((l) => `<div class="card" style="display:grid;gap:8px"><div class="row"><div class="grow">${field("rn-" + l.key, "🔧 Trabajo", { value: l.name, hint: "Ej.: Cambio de escobillas", max: 80 })}</div><button class="icon-btn" data-act="reg-delline" data-key="${l.key}" aria-label="Quitar este trabajo">✕</button></div>${costPhotos(l, est[l.key])}</div>`).join("")}
+      <div><button class="link" data-act="reg-custom">＋ Añadir otro trabajo (reparación, revisión…)</button></div>
+      <div class="field"><label class="label" for="r-notes">Taller y observaciones (opcional)</label><textarea class="input" id="r-notes" rows="2" maxlength="1000" style="height:auto;padding:10px 14px" placeholder="Ej.: Taller Pepe">${esc(r.notes)}</textarea></div>
+    </div>
+    <div class="foot">${banner(r.error)}<div class="vsub" id="reg-sum" style="font-size:12.5px">${regSummary(r)}</div>
+      <button class="btn" data-act="reg-save" ${n && !r.busy ? "" : "disabled"}>${r.busy ? `<span class="spinner"></span>` : n ? "Guardar " + plural(n, "trabajo", "trabajos") : "Marca qué se ha hecho"}</button></div></div>`;
+}
+/* ═══════════ Punto 6: registrar repostajes ═══════════ */
+const FUEL_ALL = ["Gasolina 95", "Gasolina 98", "Diésel", "Diésel premium", "GLP", "GNC", "Electricidad"];
+function fuelOptions(f) {
+  return ({ Gasolina: ["Gasolina 95", "Gasolina 98"], "Híbrido": ["Gasolina 95", "Gasolina 98"], "Diésel": ["Diésel", "Diésel premium"],
+    "Híbrido enchufable": ["Gasolina 95", "Gasolina 98", "Electricidad"], "Eléctrico": ["Electricidad"], GLP: ["GLP", "Gasolina 95", "Gasolina 98"] })[f] || FUEL_ALL;
+}
+/* Litros y precio: el punto y la coma son decimales ("1.459" €/L). */
+function parseAmount(t) {
+  const x = String(t).replace(/€/g, "").replace(/\s/g, "").replace(/,/g, ".");
+  if (!x || (x.match(/\./g) || []).length > 1) return null;
+  const n = Number(x); return Number.isFinite(n) ? n : null;
+}
+const FIELDS = ["q", "p", "t"];
+const fuVal = (fu, f) => f === "t" ? parseCost(fu.t) : parseAmount(fu[f]);
+const fuDerived = (fu) => fu.recent.length < 2 ? null : FIELDS.find((f) => !fu.recent.includes(f));
+const fuUnit = (fu) => fu.type === "Electricidad" ? "kWh" : "L";
+function fuErr(fu, f) {
+  const t = String(fu[f]).trim(); if (!t) return null;
+  const n = fuVal(fu, f); if (n == null) return "Escribe un número";
+  if (f === "q" && (n <= 0 || n > 999)) return `Entre 0 y 999 ${fuUnit(fu)}`;
+  if (f === "p" && (n <= 0 || n > 9.999)) return "Entre 0 y 9,999 €";
+  if (f === "t" && (n <= 0 || n > 9999)) return "Entre 0 y 9.999 €";
+  return null;
+}
+/* El usuario escribe en un importe: con dos escritos se calcula el tercero. */
+function fuelWith(fu, field, text) {
+  const old = fuDerived(fu), typed = String(text).trim() !== "";
+  fu.recent = [...(typed ? [field] : []), ...fu.recent.filter((f) => f !== field)].slice(0, 2);
+  fu[field] = text;
+  if (old && !fu.recent.includes(old) && fu.recent.length < 2) fu[old] = "";
+  const d = fuDerived(fu); if (!d) return;
+  const q = fuVal(fu, "q"), p = fuVal(fu, "p"), t = fuVal(fu, "t");
+  fu[d] = d === "t" ? (q != null && p != null ? dec(q * p, 2) : "") : d === "q" ? (t != null && p ? dec(t / p, 2) : "") : (t != null && q ? dec(t / q, 3) : "");
+}
+function fuMismatch(fu) {
+  const q = fuVal(fu, "q"), p = fuVal(fu, "p"), t = fuVal(fu, "t");
+  return q != null && p != null && t != null && Math.abs(q * p - t) > Math.max(0.10, t * 0.02);
+}
+function fuWarn(fu) {
+  const p = fuVal(fu, "p"); if (p == null || fuErr(fu, "p")) return null;
+  const [lo, hi] = fu.type === "Electricidad" ? [0.05, 1.2] : [0.6, 3];
+  return p < lo || p > hi ? `¿Seguro? ${dec(p, 3)} €/${fuUnit(fu)} es un precio poco habitual.` : null;
+}
+function fuelValidate(fu, v) {
+  if (fu.date > iso(today0())) return "La fecha no puede ser futura.";
+  const k = v.type !== "barco" && regKmError(fu, v); if (k) return k;
+  if (FIELDS.filter((f) => String(fu[f]).trim()).length < 2) return `Escribe al menos dos de: ${fuUnit(fu) === "kWh" ? "kWh" : "litros"}, precio y total.`;
+  if (fuErr(fu, "q")) return `Revisa los ${fuUnit(fu) === "kWh" ? "kWh" : "litros"}.`;
+  if (fuErr(fu, "p")) return "Revisa el precio."; if (fuErr(fu, "t")) return "Revisa el total.";
+  if (fuMismatch(fu)) return "Cantidad × precio no coincide con el total.";
+  return null;
+}
+function fuelPreview(fu, v) {
+  const km = Number(String(fu.km).replace(/[.\s]/g, "")), q = fuVal(fu, "q");
+  if (!fu.full || !String(fu.km).trim() || !Number.isFinite(km) || q == null || q <= 0) return null;
+  const ev = fu.type === "Electricidad", same = v.fuelLogs.filter((f) => isEv(f) === ev);
+  if (same.some((f) => f.km != null && f.km >= km)) return null;
+  const before = segments(same), after = segments([...same, { km, liters: q, full: true, fuelType: fu.type }]);
+  if (after.length <= before.length) return null;
+  const avg = before.length ? before.reduce((a, b) => a + b, 0) / before.length : null;
+  return `Este ${ev ? "tramo" : "depósito"}: ${dec(after.at(-1))} ${ev ? "kWh/100" : "L/100"} km${avg != null ? ` (tu media hasta ahora: ${dec(avg)})` : ""}.`;
+}
+function openFuel(vid) {
+  const v = vehicleById(vid), opts = fuelOptions(v.fuelType);
+  const last = [...v.fuelLogs].sort((a, b) => b.date.localeCompare(a.date)).map((f) => f.fuelType).find((t) => t && opts.includes(t));
+  S.fuel = { vid, date: iso(today0()), km: "", q: "", p: "", t: "", recent: [], full: true, type: last || opts[0], station: "", error: null, busy: false };
+  go("fuel");
+}
+function fuelLive(fu, v) {
+  const mm = fuMismatch(fu), w = fuWarn(fu), pv = v.type === "barco" ? null : fuelPreview(fu, v);
+  return (mm ? banner(`${dec(fuVal(fu, "q"), 2)} ${fuUnit(fu)} × ${dec(fuVal(fu, "p"), 3)} = ${money(fuVal(fu, "q") * fuVal(fu, "p"))}, no ${money(fuVal(fu, "t"))}. Revisa algún importe.`) : w ? banner(w, "info") : "") + (pv ? banner(pv, "info") : "");
+}
+const fuelSummary = (fu) => fuVal(fu, "q") != null && fuVal(fu, "t") != null && !fuErr(fu, "q") && !fuErr(fu, "t") ? `${dec(fuVal(fu, "q"), 2)} ${fuUnit(fu)} · ${money(fuVal(fu, "t"))} · ${fu.full ? "lleno" : "parcial"}` : "";
+function amountField(fu, f, label, suffix) {
+  const calc = fuDerived(fu) === f, err = fuErr(fu, f);
+  return `<div class="field"><label class="label" for="fu-${f}">${label}</label><div class="input-wrap"><input class="input ${calc ? "calc" : ""} ${err ? "bad" : ""}" id="fu-${f}" inputmode="decimal" maxlength="${f === "p" ? 6 : 8}" value="${esc(fu[f])}" placeholder="0"><span class="suffix" id="fu-${f}-suf">${suffix}</span></div><div class="err" id="fu-${f}-err">${esc(err || "")}</div><div class="help" id="fu-${f}-calc" style="${calc ? "" : "display:none"}">Calculado</div></div>`;
+}
+function vFuel() {
+  const fu = S.fuel, v = vehicleById(fu.vid), boat = v.type === "barco", today = iso(today0()), ev = fu.type === "Electricidad";
+  const opts = fuelOptions(v.fuelType), kmErr = boat ? null : regKmError(fu, v);
+  const stations = [...new Map([...v.fuelLogs].sort((a, b) => b.date.localeCompare(a.date)).filter((f) => f.station).map((f) => [f.station.toLowerCase(), f.station])).values()];
+  return `<div class="screen">
+    <div class="appbar sub"><button class="icon-btn" data-act="fuel-cancel" aria-label="Atrás">←</button><h1>${ev ? "Registrar recarga" : "Registrar repostaje"}</h1></div>
+    <div class="scroll">
+      <div class="vsub" style="font-weight:600">${typeOf(v.type)[2]} ${esc(v.brand + " " + v.model)}</div>
+      ${opts.length > 1 ? `<div><div class="label">¿Qué has echado?</div><div class="chips" role="radiogroup">${opts.map((o) => `<button class="pill ${fu.type === o ? "sel" : ""}" role="radio" aria-checked="${fu.type === o}" data-act="fuel-type" data-t="${esc(o)}">${o === "Electricidad" ? "🔌 Electricidad" : esc(o)}</button>`).join("")}</div></div>` : ""}
+      <div class="grid2">
+        <div class="field"><label class="label" for="fu-date">Fecha</label><input class="input" type="date" id="fu-date" max="${today}" value="${fu.date}"></div>
+        ${boat ? "" : `<div class="field"><label class="label" for="fu-km">Kilómetros</label><div class="input-wrap"><input class="input ${kmErr ? "bad" : ""}" id="fu-km" inputmode="numeric" maxlength="7" value="${esc(fu.km)}" placeholder="${v.currentKm != null ? "Último: " + thousands(v.currentKm) : ""}"><span class="suffix">km</span></div><div class="err" id="fu-km-err">${esc(kmErr || "")}</div></div>`}
+      </div>
+      ${boat ? "" : `<div class="help" id="fu-km-help" style="margin-top:-6px;${kmErr ? "display:none" : ""}">${fu.km ? "Se guardará también como lectura de kilometraje." : "Opcional, pero sin km no se puede calcular el consumo."}</div>`}
+      <h3 class="tsec" style="margin:6px 0 0">Importes</h3>
+      <p class="vsub" style="margin:-4px 0 0;line-height:1.4">Escribe dos de los tres (los que vengan en el ticket) y calculamos el otro.</p>
+      ${amountField(fu, "t", "Total pagado", "€")}
+      <div class="grid2">${amountField(fu, "q", ev ? "Energía" : "Litros", fuUnit(fu))}${amountField(fu, "p", "Precio", "€/" + fuUnit(fu))}</div>
+      <div id="fu-live" style="display:grid;gap:8px">${fuelLive(fu, v)}</div>
+      <button class="switchrow" data-act="fuel-full" role="switch" aria-checked="${fu.full}"><span class="col grow"><b>${ev ? "Carga completa" : "He llenado el depósito"}</b><span class="vsub" style="font-size:12px">${ev ? "Hasta el 100 % (o tu límite habitual). Así calculamos el consumo real." : "El consumo se calcula de lleno a lleno, sumando también los repostajes parciales."}</span></span><span class="sw ${fu.full ? "on" : ""}"></span></button>
+      <div class="field"><label class="label" for="fu-station">${ev ? "Dónde (opcional)" : "Gasolinera (opcional)"}</label><input class="input" id="fu-station" list="dl-station" maxlength="80" value="${esc(fu.station)}" placeholder="${ev ? "Casa, trabajo, cargador…" : "Repsol de la avenida…"}"><datalist id="dl-station">${stations.map((x) => `<option value="${esc(x)}"></option>`).join("")}</datalist></div>
+    </div>
+    <div class="foot">${banner(fu.error)}<div class="vsub" id="fuel-sum" style="font-size:12.5px">${fuelSummary(fu)}</div>
+      <button class="btn" data-act="fuel-save" ${fu.busy ? "disabled" : ""}>${fu.busy ? `<span class="spinner"></span>` : "Guardar"}</button></div></div>`;
+}
+
+/* Generador QR mínimo (modo byte, corrección M, versiones 1-6). Basado en
+   el algoritmo de la norma ISO 18004; suficiente para enlaces cortos. */
+function qrMatrix(text) {
+  const bytes = [...new TextEncoder().encode(text)];
+  const SPEC = { 1: [16, 10, 1], 2: [28, 16, 1], 3: [44, 26, 1], 4: [32, 18, 2], 5: [43, 24, 2], 6: [27, 16, 4] }; // datos/bloque, ecc/bloque, bloques
+  const ALIGN = { 1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30], 6: [6, 34] };
+  let ver = 1; while (ver <= 6 && SPEC[ver][0] * SPEC[ver][2] < bytes.length + 2) ver++;
+  if (ver > 6) throw new Error("Texto demasiado largo para el QR");
+  const [dPer, ePer, nb] = SPEC[ver], cap = dPer * nb, size = 17 + 4 * ver;
+  // Bits de datos
+  const bits = []; const put = (v, n) => { for (let i = n - 1; i >= 0; i--) bits.push((v >>> i) & 1); };
+  put(4, 4); put(bytes.length, 8); bytes.forEach((b) => put(b, 8));
+  put(0, Math.min(4, cap * 8 - bits.length)); while (bits.length % 8) bits.push(0);
+  const data = []; for (let i = 0; i < bits.length; i += 8) data.push(bits.slice(i, i + 8).reduce((a, b) => a * 2 + b, 0));
+  for (let p = 0xEC; data.length < cap; p ^= 0xEC ^ 0x11) data.push(p);
+  // Reed-Solomon
+  const mul = (x, y) => { let z = 0; for (let i = 7; i >= 0; i--) { z = (z << 1) ^ ((z >>> 7) * 0x11D); z ^= ((y >>> i) & 1) * x; } return z; };
+  const div = []; for (let i = 0; i < ePer - 1; i++) div.push(0); div.push(1);
+  for (let i = 0, root = 1; i < ePer; i++, root = mul(root, 2)) for (let j = 0; j < div.length; j++) { div[j] = mul(div[j], root); if (j + 1 < div.length) div[j] ^= div[j + 1]; }
+  const blocks = [], eccs = [];
+  for (let b = 0; b < nb; b++) {
+    const blk = data.slice(b * dPer, (b + 1) * dPer), rem = div.map(() => 0);
+    for (const x of blk) { const f = x ^ rem.shift(); rem.push(0); div.forEach((c, i) => { rem[i] ^= mul(c, f); }); }
+    blocks.push(blk); eccs.push(rem);
+  }
+  const all = [];
+  for (let i = 0; i < dPer; i++) blocks.forEach((b) => all.push(b[i]));
+  for (let i = 0; i < ePer; i++) eccs.forEach((e) => all.push(e[i]));
+  // Matriz y patrones fijos
+  const M = Array.from({ length: size }, () => Array(size).fill(false));
+  const F = Array.from({ length: size }, () => Array(size).fill(false));
+  const set = (x, y, d) => { M[y][x] = d; F[y][x] = true; };
+  for (let i = 0; i < size; i++) { set(6, i, i % 2 === 0); set(i, 6, i % 2 === 0); }
+  for (const [cx, cy] of [[3, 3], [size - 4, 3], [3, size - 4]])
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) {
+      const x = cx + dx, y = cy + dy, d = Math.max(Math.abs(dx), Math.abs(dy));
+      if (x >= 0 && y >= 0 && x < size && y < size) set(x, y, d !== 2 && d !== 4);
+    }
+  const al = ALIGN[ver];
+  for (let i = 0; i < al.length; i++) for (let j = 0; j < al.length; j++) {
+    if ((i === 0 && j === 0) || (i === 0 && j === al.length - 1) || (i === al.length - 1 && j === 0)) continue;
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) set(al[i] + dx, al[j] + dy, Math.max(Math.abs(dx), Math.abs(dy)) !== 1);
+  }
+  const drawFormat = (mask) => {
+    const d = (0 << 3) | mask; let r = d; for (let i = 0; i < 10; i++) r = (r << 1) ^ ((r >>> 9) * 0x537);
+    const b = ((d << 10) | r) ^ 0x5412, g = (i) => ((b >>> i) & 1) === 1;
+    for (let i = 0; i <= 5; i++) set(8, i, g(i));
+    set(8, 7, g(6)); set(8, 8, g(7)); set(7, 8, g(8));
+    for (let i = 9; i < 15; i++) set(14 - i, 8, g(i));
+    for (let i = 0; i < 8; i++) set(size - 1 - i, 8, g(i));
+    for (let i = 8; i < 15; i++) set(8, size - 15 + i, g(i));
+    set(8, size - 8, true);
+  };
+  drawFormat(0);
+  // Datos en zigzag
+  let k = 0;
+  for (let right = size - 1; right >= 1; right -= 2) {
+    if (right === 6) right = 5;
+    for (let v = 0; v < size; v++) for (let j = 0; j < 2; j++) {
+      const x = right - j, up = ((right + 1) & 2) === 0, y = up ? size - 1 - v : v;
+      if (!F[y][x] && k < all.length * 8) { M[y][x] = ((all[k >>> 3] >>> (7 - (k & 7))) & 1) === 1; k++; }
+    }
+  }
+  // Máscara con menor penalización (reglas 1, 2 y 4)
+  const MASKS = [(x, y) => (x + y) % 2 === 0, (x, y) => y % 2 === 0, (x) => x % 3 === 0, (x, y) => (x + y) % 3 === 0,
+    (x, y) => (Math.floor(x / 3) + Math.floor(y / 2)) % 2 === 0, (x, y) => (x * y) % 2 + (x * y) % 3 === 0,
+    (x, y) => ((x * y) % 2 + (x * y) % 3) % 2 === 0, (x, y) => ((x + y) % 2 + (x * y) % 3) % 2 === 0];
+  const apply = (m) => { for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (!F[y][x] && MASKS[m](x, y)) M[y][x] = !M[y][x]; };
+  const penalty = () => {
+    let p = 0, dark = 0;
+    for (let y = 0; y < size; y++) for (const line of [M[y], M.map((r) => r[y])]) {
+      let run = 1; for (let x = 1; x <= size; x++) { if (x < size && line[x] === line[x - 1]) run++; else { if (run >= 5) p += run - 2; run = 1; } }
+    }
+    for (let y = 0; y < size - 1; y++) for (let x = 0; x < size - 1; x++) { const c = M[y][x]; if (c === M[y][x + 1] && c === M[y + 1][x] && c === M[y + 1][x + 1]) p += 3; }
+    M.forEach((r) => r.forEach((c) => { if (c) dark++; }));
+    return p + Math.floor(Math.abs(dark * 20 - size * size * 10) / (size * size)) * 10;
+  };
+  let best = 0, bestP = Infinity;
+  for (let m = 0; m < 8; m++) { apply(m); drawFormat(m); const p = penalty(); if (p < bestP) { bestP = p; best = m; } apply(m); }
+  apply(best); drawFormat(best);
+  return M;
+}
+function qrSvg(text, px = 190) {
+  const M = qrMatrix(text), n = M.length, q = 4, t = n + 2 * q;
+  let path = "";
+  M.forEach((row, y) => row.forEach((d, x) => { if (d) path += `M${x + q} ${y + q}h1v1h-1z`; }));
+  return `<svg viewBox="0 0 ${t} ${t}" width="${px}" height="${px}" shape-rendering="crispEdges" role="img" aria-label="Código QR"><rect width="${t}" height="${t}" fill="#fff"/><path d="${path}" fill="#000"/></svg>`;
+}
+
+/* ═══════════ Punto 7: compartir vehículo ═══════════ */
+const CODE_ALPHA = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const prettyCode = (c) => c.slice(0, 3) + " " + c.slice(3);
+const shareLink = (c) => "mantenitrak://app/join/" + c;
+function newCode() {
+  const taken = new Set(Object.values(DB.accounts).flatMap((a) => a.vehicles.map((v) => v.invite?.code).filter(Boolean)));
+  let c; do { c = Array.from(crypto.getRandomValues(new Uint8Array(6)), (b) => CODE_ALPHA[b % CODE_ALPHA.length]).join(""); } while (taken.has(c));
+  return c;
+}
+function inviteOf(v) {
+  if (!v.invite || new Date(v.invite.expires) <= new Date()) { v.invite = { code: newCode(), expires: new Date(Date.now() + 7 * 864e5).toISOString() }; persist(); }
+  return v.invite;
+}
+function expiryLabel(iso) {
+  const d = new Date(iso), days = dayDiff(new Date(d.getFullYear(), d.getMonth(), d.getDate()), today0());
+  return days <= 0 ? "Caduca hoy" : days === 1 ? "Caduca mañana" : `Caduca en ${days} días (${fmtDate(iso.slice(0, 10))})`;
+}
+const shareMessage = (v, inv) => `Te invito a ver el ${v.brand} ${v.model} en ManteniTrack.\n\nAbre la app, pulsa «Unirme a un vehículo» y escribe el código ${prettyCode(inv.code)} (vale hasta el ${fmtDate(inv.expires.slice(0, 10))}).\n\nO abre este enlace desde el móvil: ${shareLink(inv.code)}`;
+const MEMBER_ROLES = [["regular", "👤", "Lo uso a menudo", "Familia, pareja, compañero de piso…"], ["company", "🏢", "Es de empresa", "Vehículo de flota o de trabajo."], ["mechanic", "🔧", "Soy su taller", "Lo verás también en el modo taller."]];
+const initials = (n) => (n || "?").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase() || "?";
+function membersOf(v) {
+  const [email, owner] = ownerOf(v);
+  const list = [{ email, name: owner.name || email.split("@")[0], role: "owner" }, ...(v.members || [])];
+  return isOwnerOf(v) ? list : list.filter((m) => m.role === "owner" || m.email === S.user);
+}
+function vShare() {
+  const v = vehicleById(S.share.vid);
+  if (!v) { S.share = null; return vHome(); }
+  const own = isOwnerOf(v), inv = own ? inviteOf(v) : null, ms = membersOf(v);
+  return `<div class="screen">
+    <div class="appbar sub"><button class="icon-btn" data-act="share-back" aria-label="Atrás">←</button><h1>${own ? "Compartir vehículo" : "Personas con acceso"}</h1></div>
+    <div class="scroll">
+      <div class="vsub" style="font-weight:600">${typeOf(v.type)[2]} ${esc(v.brand + " " + v.model)}</div>
+      ${own ? `<div class="card" style="display:grid;justify-items:center;gap:8px;padding:18px 16px 12px">
+        <div class="vsub" style="font-size:13px">Que lo escaneen con la app o escribe el código</div>
+        <div class="qrbox">${qrSvg(shareLink(inv.code), 180)}</div>
+        <div class="code" id="sh-code" aria-label="Código: ${inv.code.split("").join(" ")}">${prettyCode(inv.code)}</div>
+        <div class="vsub" style="font-size:12.5px">${expiryLabel(inv.expires)}</div>
+        <div class="grid2" style="width:100%"><button class="btn outline" data-act="share-copy">📋 Copiar</button><button class="btn" data-act="share-send">↗ Enviar</button></div>
+        <button class="link" data-act="share-regen">↻ Generar código nuevo</button></div>
+      <div class="card" style="display:grid;gap:6px"><b>Quien se una podrá…</b>
+        <div class="vsub" style="font-size:13px;line-height:1.4">✅ Ver el estado, el historial y los gastos, y registrar mantenimientos, repostajes y km.</div>
+        <div class="vsub" style="font-size:13px;line-height:1.4">🔒 Solo tú puedes editar o eliminar el vehículo, cambiar la ficha y compartirlo.</div>
+        <div class="vsub" style="font-size:13px;line-height:1.4">⏱️ El código caduca a los 7 días. Quien ya se ha unido mantiene el acceso hasta que se lo quites.</div></div>` : ""}
+      <h3 class="tsec" style="margin:8px 0 0">Personas con acceso (${ms.length})</h3>
+      ${ms.map((m) => `<div class="card icard"><div class="row"><span class="avatar ${m.role === "owner" ? "own" : ""}">${esc(initials(m.name))}</span><span class="col grow"><b>${esc(m.name)}${m.email === S.user ? " (tú)" : ""}</b><span class="vsub" style="font-size:12px">${ROLE_LABEL[m.role].replace(/^\S+ /, "")}${m.joinedAt ? " · desde " + fmtDate(m.joinedAt) : ""}</span></span>
+        ${own && m.role !== "owner" ? `<select class="input" style="width:auto;height:36px;padding:0 8px;font-size:13px" data-member="${esc(m.email)}" aria-label="Rol de ${esc(m.name)}">${MEMBER_ROLES.map(([r]) => `<option value="${r}" ${m.role === r ? "selected" : ""}>${ROLE_LABEL[r].replace(/^\S+ /, "")}</option>`).join("")}</select><button class="icon-btn" data-act="share-remove" data-email="${esc(m.email)}" aria-label="Quitar acceso a ${esc(m.name)}" title="Quitar acceso">✕</button>` : ""}</div></div>`).join("")}
+      ${own && ms.length <= 1 ? `<div class="vsub" style="font-size:13px">Aún no lo has compartido con nadie.</div>` : ""}
+      ${own ? "" : `<button class="btn outline" style="margin-top:12px" data-act="share-leave">Dejar de ver este vehículo</button>`}
+    </div></div>`;
+}
+function leaveDialog(v) {
+  S.dialog = { title: "Dejar de ver este vehículo", body: "Desaparecerá de tu lista. Lo que hayas registrado se queda en el vehículo. Para volver a verlo necesitarás un código nuevo del propietario.", no: "Cancelar", yes: "Dejar de verlo",
+    onYes: () => { v.members = (v.members || []).filter((m) => m.email !== S.user); persist(); S.share = null; go("home"); toast(`Ya no ves el ${v.brand} ${v.model}`); } };
+}
+function codeError(c) {
+  if (!c) return "Escribe el código";
+  if (c.length !== 6) return "El código tiene 6 letras y números";
+  if ([...c].some((ch) => !CODE_ALPHA.includes(ch))) return "Los códigos no llevan 0, 1, I, L ni O";
+  return null;
+}
+function vJoin() {
+  const j = S.join, err = j.tried || j.code.length >= 6 ? codeError(j.code) : null;
+  return `<div class="screen">
+    <div class="appbar sub"><button class="icon-btn" data-act="join-back" aria-label="Atrás">←</button><h1>Unirme a un vehículo</h1></div>
+    <div class="scroll">
+      <p class="vsub" style="margin:0;line-height:1.45">Pide al propietario que abra el vehículo en ManteniTrack y pulse «Compartir». Escanea su QR o escribe el código de 6 caracteres.</p>
+      <button class="btn outline" data-act="join-scan">📷 Escanear QR</button>
+      <div class="field"><label class="label" for="j-code">Código</label><input class="input codeinput ${err ? "bad" : ""}" id="j-code" maxlength="7" autocomplete="off" autocapitalize="characters" spellcheck="false" value="${esc(j.code)}" placeholder="ABC234"><div class="err" id="j-code-err">${esc(err || "")}</div></div>
+      <div class="label" style="margin-bottom:-4px">¿Cómo usas este vehículo?</div>
+      <div role="radiogroup" style="display:grid;gap:8px">${MEMBER_ROLES.map(([r, e, t, h]) => `<button class="roleopt ${j.role === r ? "on" : ""}" role="radio" aria-checked="${j.role === r}" data-act="join-role" data-r="${r}"><span style="font-size:20px">${e}</span><span class="col grow"><b>${t}</b><span class="vsub" style="font-size:12.5px">${h}</span></span><span class="radio"></span></button>`).join("")}</div>
+      <div class="vsub" style="font-size:12px">El propietario puede cambiarlo después.</div>
+    </div>
+    <div class="foot">${banner(j.error)}<button class="btn" data-act="join-go" ${j.busy ? "disabled" : ""}>${j.busy ? `<span class="spinner"></span>` : "Unirme"}</button></div></div>`;
+}
+
+/* Reduce la foto en el navegador para que quepa en el almacenamiento de la demo. */
+function shrinkPhoto(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, 480 / Math.max(img.width, img.height)), c = document.createElement("canvas");
+      c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      resolve(c.toDataURL("image/jpeg", 0.7));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("imagen")); };
+    img.src = url;
+  });
+}
+function vRecSheet() {
+  if (!S.recSheet) return "";
+  const v = vehicleById(S.detail.id), r = v && v.records.find((x) => x.id === S.recSheet.id);
+  if (!r) return "";
+  const it = Object.fromEntries(itemsFor(v).map((i) => [i.id, i]))[r.itemId];
+  const row = (k, val) => `<div class="srow"><span class="grow vsub">${k}</span><b>${esc(val)}</b></div>`;
+  return `<div class="sheet-scrim" data-act="recsheet-close"><div class="sheet" role="dialog" aria-label="Detalle del mantenimiento">
+    <div class="handle"></div><h3 style="margin:0;font-size:19px">${it?.icon || "🔧"} ${esc(it?.name || r.name || r.itemId)}</h3>
+    <div>${row("Fecha", fmtDate(r.date))}${r.km != null ? row("Km", fmtKm(r.km)) : ""}${r.cost ? row("Coste", r.estimated ? `≈ ${money(r.cost)} (reparto estimado del total)` : money(r.cost)) : ""}${r.notes ? row("Notas", r.notes) : ""}</div>
+    ${r.photos?.length ? `<div class="label">Fotos</div><div class="photos">${r.photos.map((p, i) => `<img src="${p}" alt="Foto ${i + 1} de ${r.photos.length}">`).join("")}</div>` : ""}
+    <button class="btn outline" data-act="recsheet-close">Cerrar</button></div></div>`;
+}
+
+/* ── Asistente (punto 3) ── */
+const STEP_LABEL = { type: "Tipo", data: "Datos", usage: "Uso", role: "Tu rol", zone: "Zona", specs: "Ficha técnica" };
+const newDraft = () => ({ type: null, brand: "", model: "", year: "", engine: "", plate: "", currentKm: "", annualKm: "", fuelType: "", usage: "", role: "owner", zone: "interior" });
+const stepsOf = (d) => d.type === "barco" ? ["type", "data", "usage", "role", "specs"] : ["type", "data", "usage", "role", "zone", "specs"];
+const usesKm = (d) => d.type !== "barco";
+function stepValid(d, s) {
+  if (s === "type") return !!d.type;
+  if (s === "data") return !V.required(d.brand, "") && !V.required(d.model, "") && !V.year(d.year);
+  if (s === "usage") return !usesKm(d) || (!V.currentKm(d.currentKm) && !V.annualKm(d.annualKm));
+  return true;
+}
+const W = () => S.wiz;
+const curStep = () => stepsOf(W().d)[W().i];
+
+function vWizard() {
+  const { d, i } = W(), steps = stepsOf(d), s = steps[i], last = i === steps.length - 1;
+  const ok = stepValid(d, s) && W().specs !== "loading";
+  const body = { type: wType, data: wData, usage: wUsage, role: wRole, zone: wZone, specs: wSpecs }[s]();
+  return `<div class="screen">
+    <div class="appbar sub" style="border:0"><button class="icon-btn" data-act="wiz-close" aria-label="Cerrar">✕</button><h1>Añadir vehículo</h1></div>
+    <div class="progress"><div class="row"><span>Paso ${i + 1} de ${steps.length}</span><b>${STEP_LABEL[s]}</b></div><div class="bar"><i style="width:${(i + 1) / steps.length * 100}%"></i></div></div>
+    <div class="scroll" style="padding:20px">${body}</div>
+    <div class="foot">${banner(W().saveError)}
+      <div class="row">${i ? `<button class="btn outline grow" data-act="wiz-back">Atrás</button>` : ""}
+      <button class="btn" style="flex:2" id="wiz-next" data-act="${last ? "wiz-save" : "wiz-next"}" ${ok ? "" : "disabled"}>${last ? (S.busy ? `<span class="spinner"></span>` : "Añadir vehículo") : "Siguiente"}</button></div></div></div>`;
+}
+const head = (t, sub) => `<div style="display:grid;gap:6px;margin-bottom:6px"><h2 class="step-title">${t}</h2>${sub ? `<p class="step-sub">${sub}</p>` : ""}</div>`;
+function wType() {
+  return head("¿Qué tipo de vehículo es?", "El plan de mantenimiento se adapta a cada tipo.") +
+    `<div class="types">${TYPES.map(([id, label, em]) => `<button class="opt compact ${W().d.type === id ? "sel" : ""}" data-act="wiz-type" data-id="${id}" aria-pressed="${W().d.type === id}"><span>${em}</span>${label}</button>`).join("")}</div>`;
+}
+const datalist = (id, opts) => `<datalist id="${id}">${opts.map((o) => `<option value="${esc(o)}"></option>`).join("")}</datalist>`;
+function wData() {
+  const d = W().d, boat = d.type === "barco";
+  return head("Datos del vehículo", "Elige de la lista o escribe lo que ponga en la documentación.") +
+    datalist("dl-brand", brandsFor(d.type)) + datalist("dl-model", modelsFor(d.type, d.brand)) + datalist("dl-engine", enginesFor(d.brand, d.model, d.type)) +
+    field("w-brand", "Marca", { value: d.brand, hint: { moto: "ej. Yamaha", camion: "ej. Volvo", barco: "ej. Beneteau" }[d.type] || "ej. Seat", list: "dl-brand", v: "brand" }) +
+    field("w-model", "Modelo", { value: d.model, hint: boat ? "ej. Flyer 7" : "ej. Ibiza", list: "dl-model", v: "model" }) +
+    `<div class="grid2">${field("w-year", "Año", { value: d.year, hint: "ej. 2019", mode: "numeric", max: 4, v: "year" })}${field("w-plate", boat ? "Matrícula / folio (opcional)" : "Matrícula (opcional)", { value: d.plate, hint: "ej. 4521 HJK", max: 15, style: "text-transform:uppercase" })}</div>` +
+    field("w-engine", "Motorización (opcional)", { value: d.engine, hint: boat ? "ej. Mercury 150 CV" : "ej. 1.0 TSI 110 CV", list: "dl-engine", help: "Con la motorización exacta, la ficha técnica será más precisa." });
+}
+const pills = (act, opts, sel) => `<div class="chips">${opts.map((o) => `<button class="pill ${o === sel ? "sel" : ""}" data-act="${act}" data-v="${esc(o)}" aria-pressed="${o === sel}">${esc(o)}</button>`).join("")}</div>`;
+function wUsage() {
+  const d = W().d, km = usesKm(d), ev = d.fuelType === "Eléctrico", di = d.fuelType === "Diésel";
+  return head(km ? "¿Cómo lo usas?" : "Motor", km ? "Con esto calculamos cuándo toca cada revisión." : "En embarcaciones el mantenimiento se controla por tiempo.") +
+    (km ? field("w-km", "Kilometraje actual", { value: d.currentKm, hint: "ej. 45000", mode: "numeric", suffix: "km", max: 7, v: "currentKm" }) +
+      field("w-annual", "Km al año (opcional)", { value: d.annualKm, hint: "ej. 12000", mode: "numeric", suffix: "km/año", max: 7, v: "annualKm", help: "Si no lo sabes, déjalo vacío: lo calcularemos con tus lecturas." }) : "") +
+    `<div><span class="label">Combustible</span>${pills("wiz-fuel", km ? ["Gasolina", "Diésel", "Híbrido", "Híbrido enchufable", "Eléctrico", "GLP"] : ["Gasolina", "Diésel", "Eléctrico"], d.fuelType)}</div>` +
+    (ev || di ? banner(ev ? "Al ser eléctrico no te pediremos aceite, filtros de combustible, bujías ni correa." : "Los diésel no llevan bujías: no aparecerán en tu plan.", "info") : "") +
+    (km ? `<div><span class="label">Uso principal</span>${pills("wiz-usage", ["Ciudad", "Carretera", "Mixto", "Profesional"], d.usage)}</div>` +
+      (!ev && (d.usage === "Ciudad" || d.usage === "Profesional") ? banner("Uso exigente: adelantaremos un 15 % los cambios de aceite.", "info") : "") : "");
+}
+const ROLES = [["owner", "👑", "Propietario", "Es tuyo y llevas tú el mantenimiento."], ["regular", "👤", "Usuario habitual", "Lo conduces tú, pero es de otra persona (familia, renting…)."], ["company", "🏢", "Empresa", "Forma parte de una flota de empresa."], ["mechanic", "🔧", "Taller / Mecánico", "Lo gestionas para un cliente. Aparecerá en el modo taller."]];
+const ZONES = [["interior", "🏙️", "Interior", "Meseta y ciudad. Condiciones estándar."], ["costa", "🌊", "Costa", "Sal y humedad envejecen antes el caucho."], ["montana", "🏔️", "Montaña", "Frío, nieve y curvas desgastan más."], ["mixto", "🗺️", "Mixto", "Uso variado: vigila el desgaste desigual."], ["norte", "🌧️", "Norte húmedo", "Lluvia frecuente: importa el drenaje."]];
+const wideOpts = (act, list, sel) => list.map(([id, em, t, sub]) => `<button class="opt wide ${sel === id ? "sel" : ""}" data-act="${act}" data-id="${id}" aria-pressed="${sel === id}"><span class="em">${em}</span><span style="flex:1"><b>${t}</b><small>${sub}</small></span>${sel === id ? `<span style="color:var(--primary)">✔</span>` : ""}</button>`).join("");
+const wRole = () => head("¿Cuál es tu relación con el vehículo?", "Más adelante podrás compartirlo con otras personas.") + wideOpts("wiz-role", ROLES, W().d.role);
+const wZone = () => head("¿Por dónde circula sobre todo?", "Ajusta la vida útil estimada de los neumáticos.") + wideOpts("wiz-zone", ZONES, W().d.zone) +
+  (["costa", "montana"].includes(W().d.zone) ? banner("Te avisaremos antes de lo habitual para revisar los neumáticos (un 20 % antes, aprox.).", "info") : "");
+function wSpecs() {
+  const d = W().d, st = W().specs, km = toInt(d.currentKm);
+  const roleL = { regular: "Usuario habitual", company: "Empresa", mechanic: "Taller" }[d.role] || "Propietario";
+  const summary = `<div class="card"><div class="vhead"><span style="font-size:32px">${typeOf(d.type)[2]}</span><div class="col" style="flex:1">
+    <span class="vname" style="font-size:17px">${esc((d.brand + " " + d.model).trim())}</span><span class="vsub">${esc([d.year, d.engine.trim(), d.plate.trim().toUpperCase()].filter(Boolean).join(" · "))}</span>
+    <div class="chips" style="margin-top:8px">${km != null && usesKm(d) ? `<span class="chip t-neutral">📍 ${fmtKm(km)}</span>` : ""}${d.fuelType ? `<span class="chip t-neutral">⛽ ${esc(d.fuelType)}</span>` : ""}${d.usage ? `<span class="chip t-neutral">🛣️ ${esc(d.usage)}</span>` : ""}<span class="chip t-neutral">👤 ${roleL}</span></div></div></div></div>`;
+  const chooser = (ai = "Generar con IA") => `<p class="step-sub" style="font-size:13px">Aceite, filtros, neumáticos y batería: lo que necesitas al ir al taller o comprar recambios.</p>
+    <button class="btn" data-act="spec-ai">🤖 ${ai}</button><button class="btn outline" data-act="spec-manual">Rellenar a mano</button>`;
+  let block;
+  if (st === "loading") block = `<div style="display:grid;place-items:center;gap:12px;padding:26px 0" role="status"><span class="spinner" style="width:28px;height:28px;color:var(--primary)"></span>Consultando especificaciones…</div>`;
+  else if (st && st.values) block = (st.source === "ia" ? banner("Datos orientativos generados por IA (en la demo, valores de ejemplo). Compruébalos en el manual o con tu taller antes de comprar recambios.", "info") : "") +
+    specFieldsFor(d).map(([k, l, ic, hint]) => `<div class="spec-row">${field("s-" + k, `${ic} ${l}`, { value: st.values[k] || "", hint, v: k === "oil_liters" ? "liters" : "", mode: k === "oil_liters" ? "decimal" : "" })}</div>`).join("");
+  else block = chooser();
+  return head("Revisa y añade", "La ficha técnica es opcional: puedes completarla más tarde.") + summary +
+    `<div class="row" style="margin-top:8px"><b class="grow" style="font-size:16px">Ficha técnica</b>${st && st.values ? `<button class="link" data-act="spec-clear">🗑 Quitar</button>` : ""}</div>${block}`;
+}
+
+/* ── Hojas, diálogos, avisos ── */
+function vSheet() {
+  if (!S.sheet) return "";
+  const v = vehicleById(S.sheet.id), [annual, measured] = annualKm(v);
+  const recent = [...v.kmLogs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 3);
+  return `<div class="sheet-scrim" data-act="sheet-close"><form class="sheet" data-form="km" novalidate role="dialog" aria-label="Actualizar kilometraje" onclick="event.stopPropagation()">
+    <div class="handle"></div><h3 style="margin:0;text-align:center;font-size:20px">Actualizar kilometraje</h3>
+    <p class="h-sub" style="margin-top:-6px">${typeOf(v.type)[2]} ${esc(v.brand + " " + v.model)}</p>
+    ${field("km-new", "Kilometraje", { hint: thousands(v.currentKm ?? 45000), mode: "numeric", suffix: "km", v: "newKm", style: "font-size:22px;font-weight:800;height:56px" })}
+    <div class="card" style="padding:12px;background:${measured ? "var(--ok-light)" : "var(--surface-alt)"};border-color:${measured ? "var(--ok-border)" : "var(--border)"};display:grid;gap:6px">
+      <div class="kmlog"><span>${measured ? "Km/año según tus lecturas" : "Km/año estimados"}</span><b style="color:${measured ? "var(--ok)" : "var(--text-mid)"}">${fmtKm(annual)}</b></div>
+      ${recent.map((l) => `<div class="kmlog"><span>${fmtDate(l.date)}</span><b>${fmtKm(l.km)}</b></div>`).join("")}</div>
+    <button class="btn" type="submit">Guardar</button></form></div>`;
+}
+function vDialog() {
+  return S.dialog ? `<div class="dialog-scrim"><div class="dialog" role="alertdialog" aria-label="${esc(S.dialog.title)}"><h3>${esc(S.dialog.title)}</h3><p>${esc(S.dialog.body)}</p>
+    <div class="row"><button class="link" data-act="dialog-no">${esc(S.dialog.no)}</button><button class="link" data-act="dialog-yes">${esc(S.dialog.yes)}</button></div></div></div>` : "";
+}
+let toastTimer;
+function toast(msg) { S.toast = msg; render(); clearTimeout(toastTimer); toastTimer = setTimeout(() => { S.toast = null; render(); }, 2600); }
+
+/* ═══════════ Render ═══════════ */
+const NAMES = { onboarding: "Onboarding", login: "Login", register: "Registro", forgot: "Recuperar contraseña", reset: "Nueva contraseña", home: "Inicio (punto 2)", wizard: "Añadir vehículo (punto 3)", detail: "Detalle (punto 4)", edit: "Editar vehículo (punto 4)", reg: "Registrar mantenimiento (punto 5)", fuel: "Registrar repostaje (punto 6)", share: "Compartir vehículo (punto 7)", join: "Unirme a un vehículo (punto 7)" };
+function render() {
+  const view = { onboarding: vOnboarding, login: vLogin, register: vRegister, forgot: vForgot, reset: vReset, home: vHome, wizard: vWizard, detail: vDetail, edit: vEdit, reg: vReg, fuel: vFuel, share: vShare, join: vJoin }[S.screen];
+  app.className = "app" + (S.dark ? " dark" : "");
+  // Mantener la posición de scroll si seguimos en la misma pantalla
+  // (marcar una casilla, un aviso…); solo se vuelve arriba al cambiar.
+  const scrollKey = [S.screen, S.detail?.id, S.detail?.tab, S.screen === "wizard" ? curStep() : ""].join("|");
+  const kept = render.key === scrollKey ? [...app.querySelectorAll(".scroll")].map((e) => e.scrollTop) : null;
+  app.innerHTML = statusBar() + view() + vSheet() + vRecSheet() + vDialog() + (S.toast ? `<div class="toast" role="status">${esc(S.toast)}</div>` : "");
+  document.getElementById("where").textContent = S.screen === "wizard" ? `${NAMES.wizard} · ${STEP_LABEL[curStep()]}`
+    : S.screen === "detail" ? `${NAMES.detail} · ${TABS.find((t) => t[0] === S.detail.tab)[1]}` : NAMES[S.screen];
+  if (kept) app.querySelectorAll(".scroll").forEach((e, i) => { if (kept[i]) e.scrollTop = kept[i]; });
+  render.key = scrollKey;
+  if (S.screen === "detail") { const on = app.querySelector(".tab.on"), bar = app.querySelector(".tabs"); if (on && bar) bar.scrollLeft = Math.max(0, on.offsetLeft - 24); }
+  document.getElementById("toggle-app-theme").textContent = S.dark ? "Modo claro de la app" : "Modo oscuro de la app";
+}
+const go = (screen) => { Object.assign(S, { screen, error: null, info: null, busy: false, menu: false, form: {}, pendingEmail: null }); render(); };
+const later = (ms, fn) => setTimeout(fn, ms);
+
+/* ── Validación en vivo ── */
+function validateInput(el, show) {
+  const rule = el.dataset.validate; if (!rule) return null;
+  const v = el.value; let msg = null;
+  if (rule === "confirm") msg = v !== (app.querySelector("#password")?.value ?? "") ? "Las contraseñas no coinciden" : null;
+  else if (rule === "brand") msg = V.required(v, "la marca");
+  else if (rule === "model") msg = V.required(v, "el modelo");
+  else if (rule === "newKm") {
+    const n = toInt(v), cur = vehicleById(S.sheet.id).currentKm;
+    msg = n == null ? "Introduce los km que marca el cuentakilómetros" : cur != null && n < cur ? `No puede ser menor que el último registro (${fmtKm(cur)})` : cur != null && n - cur > 200000 ? "Son más de 200.000 km desde la última lectura. ¿Está bien escrito?" : null;
+  } else msg = V[rule](v);
+  if (show) { el.classList.toggle("bad", !!msg); const e = app.querySelector(`#${el.id}-err`); if (e) e.textContent = msg || ""; }
+  return msg;
+}
+function validateForm(form) {
+  let first = null;
+  form.querySelectorAll("[data-validate]").forEach((el) => { if (validateInput(el, true) && !first) first = el; });
+  if (first) first.focus();
+  return !first;
+}
+
+/* ── Eventos ── */
+app.addEventListener("input", (e) => {
+  const el = e.target; if (!el.id) return;
+  const id0 = el.id;
+  S.form[el.id] = el.value;
+  if (el.classList.contains("bad") || el.dataset.touched) validateInput(el, true);
+  if (S.screen === "reg") {
+    const r = S.reg, v = vehicleById(r.vid);
+    if (id0 === "r-km") {
+      r.km = el.value; r.kmTouched = true;
+      const m = regKmError(r, v), er = app.querySelector("#r-km-err"), hp = app.querySelector("#r-km-help");
+      if (er) er.textContent = m || ""; el.classList.toggle("bad", !!m); if (hp) hp.style.display = r.km && !m ? "" : "none";
+    }
+    if (id0 === "r-notes") r.notes = el.value;
+    if (id0 === "r-total") {
+      r.total = el.value; const m = costError(el.value), er = app.querySelector("#r-total-err");
+      if (er) er.textContent = m || ""; el.classList.toggle("bad", !!m);
+      const est = regCosts(r, v);
+      for (const l of r.lines) { const box = app.querySelector("#re-" + CSS.escape(l.key)); if (box) box.textContent = est[l.key] != null ? "≈ " + money(est[l.key]) : "—"; }
+    }
+    if (id0.startsWith("rc-")) { const l = r.lines.find((x) => x.key === id0.slice(3)); if (l) { l.cost = el.value; const er = app.querySelector("#" + CSS.escape(id0) + "-err"); if (er) er.textContent = costError(el.value) || ""; } }
+    if (id0.startsWith("rn-")) { const l = r.lines.find((x) => x.key === id0.slice(3)); if (l) l.name = el.value; }
+    const sum = app.querySelector("#reg-sum"); if (sum) sum.textContent = regSummary(r);
+    if (r.error) { r.error = null; app.querySelector(".foot .banner")?.remove(); }
+    return;
+  }
+  if (S.screen === "join" && id0 === "j-code") {
+    const t = el.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6);
+    if (t !== el.value) el.value = t;
+    S.join.code = t; S.join.error = null; app.querySelector(".foot .banner")?.remove();
+    const m = S.join.tried || t.length >= 6 ? codeError(t) : null;
+    el.classList.toggle("bad", !!m); app.querySelector("#j-code-err").textContent = m || "";
+    return;
+  }
+  if (S.screen === "fuel") {
+    const fu = S.fuel, v = vehicleById(fu.vid);
+    if (id0 === "fu-km") {
+      fu.km = el.value;
+      const m = regKmError(fu, v), er = app.querySelector("#fu-km-err"), hp = app.querySelector("#fu-km-help");
+      if (er) er.textContent = m || ""; el.classList.toggle("bad", !!m);
+      if (hp) { hp.style.display = m ? "none" : ""; hp.textContent = fu.km ? "Se guardará también como lectura de kilometraje." : "Opcional, pero sin km no se puede calcular el consumo."; }
+    }
+    if (id0 === "fu-station") fu.station = el.value;
+    if (["fu-q", "fu-p", "fu-t"].includes(id0)) {
+      fuelWith(fu, id0.slice(3), el.value);
+      const d = fuDerived(fu);
+      for (const f of FIELDS) {
+        const inp = app.querySelector("#fu-" + f); if (!inp) continue;
+        if (f !== id0.slice(3) && inp.value !== fu[f]) inp.value = fu[f];
+        inp.classList.toggle("calc", d === f);
+        const m = fuErr(fu, f); inp.classList.toggle("bad", !!m);
+        app.querySelector("#fu-" + f + "-err").textContent = m || "";
+        app.querySelector("#fu-" + f + "-calc").style.display = d === f ? "" : "none";
+      }
+    }
+    const live = app.querySelector("#fu-live"); if (live) live.innerHTML = fuelLive(fu, v);
+    const sum = app.querySelector("#fuel-sum"); if (sum) sum.textContent = fuelSummary(fu);
+    if (fu.error) { fu.error = null; app.querySelector(".foot .banner")?.remove(); }
+    return;
+  }
+  if (S.screen === "detail") {
+    if (id0 === "h-q") { S.detail.q = el.value; const box = app.querySelector("#h-list"); if (box) box.innerHTML = histList(vehicleById(S.detail.id)); }
+    if (id0.startsWith("s2-") && S.detail.specEdit) { S.detail.specEdit.values[id0.slice(3)] = el.value; S.detail.specEdit.changed = true; }
+    return;
+  }
+  if (S.screen === "edit") {
+    const d = S.edit.d, map = { "e-brand": "brand", "e-model": "model", "e-year": "year", "e-plate": "plate", "e-engine": "engine", "e-annual": "annualKm" };
+    const clear = (...ids) => ids.forEach((i) => { const x = app.querySelector("#" + i); if (x) x.value = ""; });
+    if (id0 === "e-brand" && norm(el.value) !== norm(d.brand)) { d.model = ""; d.engine = ""; clear("e-model", "e-engine"); }
+    if (id0 === "e-model" && norm(el.value) !== norm(d.model)) { d.engine = ""; clear("e-engine"); }
+    if (map[id0]) d[map[id0]] = el.value;
+    const opts = (list) => list.map((o) => `<option value="${esc(o)}"></option>`).join("");
+    app.querySelector("#dl-emodel").innerHTML = opts(modelsFor(d.type, d.brand));
+    app.querySelector("#dl-eengine").innerHTML = opts(enginesFor(d.brand, d.model, d.type));
+    const btn = app.querySelector("#edit-save"); if (btn) btn.disabled = !editDirty();
+    return;
+  }
+  if (S.screen !== "wizard") return;
+  const d = W().d, id = el.id;
+  if (id === "w-brand") {
+    const changed = el.value.trim().toLowerCase() !== d.brand.trim().toLowerCase(); d.brand = el.value;
+    if (changed) { d.model = ""; d.engine = ""; const m = app.querySelector("#w-model"), en = app.querySelector("#w-engine"); if (m) m.value = ""; if (en) en.value = ""; }
+    app.querySelector("#dl-model").innerHTML = modelsFor(d.type, d.brand).map((o) => `<option value="${esc(o)}"></option>`).join("");
+  }
+  if (id === "w-model") {
+    const changed = el.value.trim().toLowerCase() !== d.model.trim().toLowerCase(); d.model = el.value;
+    if (changed) { d.engine = ""; const en = app.querySelector("#w-engine"); if (en) en.value = ""; }
+    app.querySelector("#dl-engine").innerHTML = enginesFor(d.brand, d.model, d.type).map((o) => `<option value="${esc(o)}"></option>`).join("");
+  }
+  const map = { "w-year": "year", "w-plate": "plate", "w-engine": "engine", "w-km": "currentKm", "w-annual": "annualKm" };
+  if (map[id]) d[map[id]] = el.value;
+  if (id.startsWith("s-")) W().specs.values[id.slice(2)] = el.value;
+  const next = app.querySelector("#wiz-next");
+  if (next) next.disabled = !(stepValid(d, curStep()) && W().specs !== "loading");
+});
+app.addEventListener("change", async (e) => {
+  const t0 = e.target;
+  if (t0.id === "r-date" && S.reg) {
+    const r = S.reg, v = vehicleById(r.vid), today = iso(today0());
+    r.date = t0.value && t0.value <= today ? t0.value : today;
+    if (!r.kmTouched && v.type !== "barco") r.km = r.date === today && v.currentKm != null ? String(v.currentKm) : "";
+    return render();
+  }
+  if (t0.dataset?.member && S.share) {
+    const v = vehicleById(S.share.vid), m = v.members.find((x) => x.email === t0.dataset.member);
+    m.role = t0.value; persist(); toast(`${m.name}: ${ROLE_LABEL[m.role].replace(/^\S+ /, "")}`);
+    return;
+  }
+  if (t0.id === "fu-date" && S.fuel) {
+    const today = iso(today0()); S.fuel.date = t0.value && t0.value <= today ? t0.value : today; S.fuel.error = null;
+    return render();
+  }
+  if (t0.dataset?.photo && S.reg) {
+    const file = t0.files && t0.files[0]; if (!file) return;
+    try {
+      const url = await shrinkPhoto(file), l = S.reg.lines.find((x) => x.key === t0.dataset.photo);
+      if (l && l.photos.length < 6) l.photos.push(url);
+      render();
+    } catch { toast("No se ha podido leer la foto"); }
+    return;
+  }
+  if (e.target.id !== "e-type") return;
+  const d = S.edit.d, t = e.target.value; d.type = t;
+  if (t === "barco") { d.usage = ""; d.zone = "interior"; d.annualKm = ""; if (!["Gasolina", "Diésel", "Eléctrico"].includes(d.fuelType)) d.fuelType = ""; }
+  render();
+});
+async function copyText(text, ok) {
+  try { await navigator.clipboard.writeText(text); toast(ok); } catch { toast("Este navegador no permite copiar desde la demo"); }
+}
+app.addEventListener("focusout", (e) => { const el = e.target; if (el.dataset?.validate && el.value) { el.dataset.touched = "1"; validateInput(el, true); } });
+
+app.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const form = e.target, kind = form.dataset.form;
+  if (!validateForm(form)) return;
+  const val = (id) => form.querySelector("#" + id).value;
+  if (kind === "login") {
+    const email = val("email").trim().toLowerCase(), acc = DB.accounts[email];
+    Object.assign(S, { busy: true, error: null, info: null }); render();
+    later(700, () => {
+      S.busy = false;
+      if (!acc || acc.password !== val("password")) { S.error = "Email o contraseña incorrectos."; S.form.email = email; return render(); }
+      if (!acc.confirmed) { S.error = "Aún no has confirmado tu email. Revisa tu bandeja de entrada."; S.form.email = email; S.pendingEmail = null; return render(); }
+      S.user = email; go("home");
+    });
+  }
+  if (kind === "register") {
+    const email = val("email").trim().toLowerCase();
+    Object.assign(S, { busy: true, error: null }); render();
+    later(800, () => {
+      S.busy = false;
+      if (DB.accounts[email]) { S.error = "Ya existe una cuenta con este email."; Object.assign(S.form, { email }); return render(); }
+      DB.accounts[email] = { name: val("name").trim(), password: val("password"), confirmed: false, vehicles: [] }; persist();
+      S.pendingEmail = email; render();
+    });
+  }
+  if (kind === "forgot") {
+    const email = val("email").trim().toLowerCase();
+    S.busy = true; render();
+    later(700, () => { S.busy = false; S.resetFor = DB.accounts[email] ? email : null; S.info = `Si existe una cuenta con ${email}, recibirás un enlace para crear una contraseña nueva. Ábrelo desde este dispositivo.`; render(); });
+  }
+  if (kind === "reset") {
+    if (val("password") === DB.accounts[S.user].password) { S.error = "La nueva contraseña debe ser distinta de la anterior."; return render(); }
+    DB.accounts[S.user].password = val("password"); persist(); S.recovering = false; go("home"); toast("Contraseña actualizada");
+  }
+  if (kind === "km") {
+    const v = vehicleById(S.sheet.id), n = toInt(val("km-new"));
+    v.kmLogs.push({ date: iso(today0()), km: n }); v.currentKm = Math.max(v.currentKm ?? 0, n); persist();
+    S.sheet = null; render(); toast(`Kilometraje de ${v.brand} ${v.model} actualizado`);
+  }
+});
+
+app.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]"); if (!b) { if (S.menu || S.detail?.menu) { S.menu = false; if (S.detail) S.detail.menu = false; render(); } return; }
+  const act = b.dataset.act;
+  if (act !== "menu" && S.menu) S.menu = false;
+  const wiz = S.wiz;
+  switch (act) {
+    case "onb-next": S.slide++; return render();
+    case "onb-done": DB.onboardingSeen = true; persist(); return go("login");
+    case "go": return go(b.dataset.to);
+    case "toggle-pass": { const i = app.querySelector("#" + b.dataset.for); i.type = i.type === "password" ? "text" : "password"; return; }
+    case "google": S.error = null; S.info = "En la demo, Google no está conectado. Usa la cuenta de ejemplo o crea una."; return render();
+    case "resend": S.error = null; S.info = `Te hemos reenviado el correo de confirmación a ${S.form.email}.`; return render();
+    case "confirm-link": DB.accounts[S.pendingEmail].confirmed = true; persist(); S.user = S.pendingEmail; go("home"); return toast("Cuenta confirmada");
+    case "reset-link":
+      if (!S.resetFor) { S.info = null; S.error = "No hay ninguna cuenta con ese email en la demo."; return go("forgot"); }
+      S.user = S.resetFor; S.recovering = true; return go("reset");
+    case "theme": S.dark = !S.dark; return render();
+    case "menu": S.menu = !S.menu; return render();
+    case "logout": S.user = null; S.workshop = false; return go("login");
+    case "workshop": S.workshop = !S.workshop; return render();
+    case "km": S.sheet = { id: b.dataset.id }; render(); return app.querySelector("#km-new")?.focus();
+    case "sheet-close": S.sheet = null; return render();
+    case "detail": return openDetail(b.dataset.id, b.dataset.tab || "estado");
+    case "wizard": S.wiz = { d: newDraft(), i: 0, specs: null, saveError: null }; S.screen = "wizard"; S.form = {}; return render();
+    case "wiz-type": {
+      const t = b.dataset.id, d = wiz.d; if (t === d.type) return;
+      const boatFuel = ["Gasolina", "Diésel", "Eléctrico"];
+      Object.assign(d, { type: t, brand: "", model: "", engine: "" });
+      if (t === "barco") Object.assign(d, { currentKm: "", annualKm: "", usage: "", zone: "interior", fuelType: boatFuel.includes(d.fuelType) ? d.fuelType : "" });
+      wiz.specs = null; return render();
+    }
+    case "wiz-fuel": wiz.d.fuelType = wiz.d.fuelType === b.dataset.v ? "" : b.dataset.v; return render();
+    case "wiz-usage": wiz.d.usage = wiz.d.usage === b.dataset.v ? "" : b.dataset.v; return render();
+    case "wiz-role": wiz.d.role = b.dataset.id; return render();
+    case "wiz-zone": wiz.d.zone = b.dataset.id; return render();
+    case "wiz-next": if (stepValid(wiz.d, curStep())) { wiz.i++; wiz.saveError = null; render(); app.querySelector(".scroll").scrollTop = 0; } return;
+    case "wiz-back": wiz.i--; return render();
+    case "wiz-close":
+      if (!wiz.d.type) return go("home");
+      S.dialog = { title: "¿Salir sin guardar?", body: "Se perderán los datos que has introducido.", no: "Seguir editando", yes: "Salir", onYes: () => go("home") }; return render();
+    case "spec-ai": wiz.specs = "loading"; render(); later(1300, () => { if (S.wiz === wiz) { wiz.specs = { source: "ia", values: simulatedSpecs(wiz.d) }; render(); } }); return;
+    case "spec-manual": wiz.specs = { source: "manual", values: {} }; return render();
+    case "spec-clear": wiz.specs = null; return render();
+    case "wiz-save": {
+      const d = wiz.d, km = usesKm(d) ? toInt(d.currentKm) : null, sp = wiz.specs && wiz.specs.values;
+      S.busy = true; render();
+      later(800, () => {
+        const v = { id: "v" + Date.now(), type: d.type, brand: d.brand.trim(), model: d.model.trim(), year: Number(d.year), engine: d.engine.trim(), plate: d.plate.trim().toUpperCase(),
+          fuelType: d.fuelType, usage: usesKm(d) ? d.usage : "", zone: d.zone, ownerRole: d.role, currentKm: km, annualKm: usesKm(d) ? toInt(d.annualKm) : null,
+          specs: sp && Object.values(sp).some((x) => String(x).trim()) ? { source: wiz.specs.source, values: { ...sp } } : null,
+          kmLogs: km != null ? [{ date: iso(today0()), km }] : [], records: [], fuelLogs: [], expenses: [] };
+        account().vehicles.unshift(v); persist();
+        S.wiz = null; go("home"); toast(`✓ ${v.brand} ${v.model} añadido`);
+      });
+      return;
+    }
+    case "tab": {
+      S.detail.tab = b.dataset.tab; S.detail.menu = false; render();
+      const sc = app.querySelector("#dscroll"), tb = app.querySelector(".tabs");
+      if (sc && tb && sc.scrollTop > tb.offsetTop) sc.scrollTop = tb.offsetTop;
+      return;
+    }
+    case "dmenu": S.detail.menu = !S.detail.menu; return render();
+    case "fab": if (S.detail) S.detail.menu = false; if (b.dataset.p === "7") { S.share = { vid: S.detail.id }; return go("share"); } if (b.dataset.p === "5") return openReg(S.detail.id); if (b.dataset.p === "6") return openFuel(S.detail.id); return toast(`Pendiente: ${b.dataset.p === "8" ? "la fase de gastos" : "punto " + b.dataset.p} de la hoja de ruta`);
+    case "expand": S.detail.expanded = S.detail.expanded === b.dataset.id ? null : b.dataset.id; return render();
+    case "copy-list": {
+      const v = vehicleById(S.detail.id), h = healthOf(v);
+      return copyText([`${v.brand} ${v.model}${v.plate ? ` (${v.plate})` : ""}${v.currentKm != null ? " · " + fmtKm(v.currentKm) : ""}`, "Revisar:", ...h.alerts.map((s) => `- ${s.item.name} (${LABEL[s.status].toLowerCase()})`)].join("\n"), "Lista copiada. Pégala en un mensaje a tu taller.");
+    }
+    case "period": S.detail.period = b.dataset.v; return render();
+    case "hcat": S.detail.cat = b.dataset.v || null; return render();
+    case "hdel": {
+      const v = vehicleById(S.detail.id), r = v.records.find((x) => x.id === b.dataset.id);
+      const name = Object.fromEntries(itemsFor(v).map((i) => [i.id, i.name]))[r.itemId] || r.itemId;
+      S.dialog = { title: "Eliminar registro", body: `¿Seguro que quieres eliminar el registro de ${name} del ${fmtDate(r.date)}?`, no: "Cancelar", yes: "Eliminar",
+        onYes: () => { v.records = v.records.filter((x) => x.id !== r.id); persist(); render(); toast("Registro eliminado"); } };
+      return render();
+    }
+    case "spec-edit": {
+      const v = vehicleById(S.detail.id);
+      S.detail.specEdit = b.dataset.blank || !v.specs ? { source: "manual", values: {}, changed: false } : { source: v.specs.source, values: { ...v.specs.values }, changed: false };
+      return render();
+    }
+    case "spec-ai2": {
+      const v = vehicleById(S.detail.id), d = S.detail;
+      const run = () => { d.specBusy = true; d.specEdit = null; render(); later(1300, () => { d.specBusy = false; d.specEdit = { source: "ia", values: simulatedSpecs({ type: v.type, fuelType: v.fuelType }), changed: false }; if (S.detail === d) render(); }); };
+      if (!v.specs) return run();
+      S.dialog = { title: "Generar de nuevo", body: "La IA propondrá una ficha nueva. Podrás revisarla antes de guardar; hasta entonces se mantiene la actual.", no: "Cancelar", yes: "Generar", onYes: run };
+      return render();
+    }
+    case "spec-cancel": S.detail.specEdit = null; return render();
+    case "spec-save": {
+      const v = vehicleById(S.detail.id), e = S.detail.specEdit;
+      if (V.liters(e.values.oil_liters || "")) { const i = app.querySelector("#s2-oil_liters"); validateInput(i, true); i.focus(); return; }
+      const has = Object.values(e.values).some((x) => String(x).trim());
+      v.specs = has ? { source: e.changed ? "manual" : e.source, values: { ...e.values } } : null;
+      persist(); S.detail.specEdit = null; render(); return toast(has ? "Ficha técnica guardada" : "Ficha técnica eliminada");
+    }
+    case "spec-remove": {
+      const v = vehicleById(S.detail.id);
+      S.dialog = { title: "Quitar ficha técnica", body: "Se borrarán todos los datos de la ficha de este vehículo.", no: "Cancelar", yes: "Quitar", onYes: () => { v.specs = null; persist(); render(); toast("Ficha técnica eliminada"); } };
+      return render();
+    }
+    case "spec-copy": {
+      const v = vehicleById(S.detail.id);
+      return copyText([`${v.brand} ${v.model} (${v.year})`, ...specFieldsFor({ type: v.type, fuelType: v.fuelType }).filter(([k]) => v.specs.values[k]).map(([k, l]) => `${l}: ${v.specs.values[k]}${k === "oil_liters" ? " L" : ""}`)].join("\n"), "Ficha copiada");
+    }
+    case "remove": {
+      const v = vehicleById(S.detail.id); S.detail.menu = false;
+      if (!isOwnerOf(v)) { leaveDialog(v); return render(); }
+      S.dialog = { title: "Eliminar vehículo", body: `Se borrarán ${v.brand} ${v.model} y todo su historial (mantenimientos, repostajes y gastos). No se puede deshacer.`, no: "Cancelar", yes: "Eliminar",
+        onYes: () => { account().vehicles = account().vehicles.filter((x) => x.id !== v.id); persist(); go("home"); toast(`${v.brand} ${v.model} eliminado`); } };
+      return render();
+    }
+    case "edit": {
+      const v = vehicleById(S.detail.id), d = draftOf(v); S.detail.menu = false;
+      S.edit = { id: v.id, d, orig: JSON.stringify(d), error: null }; return go("edit");
+    }
+    case "edit-cancel":
+      if (!editDirty()) return go("detail");
+      S.dialog = { title: "¿Descartar los cambios?", body: "Los cambios que has hecho no se guardarán.", no: "Seguir editando", yes: "Descartar", onYes: () => go("detail") };
+      return render();
+    case "edit-fuel": S.edit.d.fuelType = S.edit.d.fuelType === b.dataset.v ? "" : b.dataset.v; return render();
+    case "edit-usage": S.edit.d.usage = S.edit.d.usage === b.dataset.v ? "" : b.dataset.v; return render();
+    case "edit-zone": S.edit.d.zone = b.dataset.v; return render();
+    case "edit-role": S.edit.d.role = b.dataset.v; return render();
+    case "edit-save": {
+      const d = S.edit.d, v = vehicleById(S.edit.id);
+      const err = V.required(d.brand, "la marca") || V.required(d.model, "el modelo") || V.year(d.year) || (d.type !== "barco" && V.annualKm(d.annualKm));
+      if (err) { S.edit.error = err; return render(); }
+      const boat = d.type === "barco";
+      Object.assign(v, { type: d.type, brand: d.brand.trim(), model: d.model.trim(), year: Number(d.year), engine: d.engine.trim(), plate: d.plate.trim().replace(/\s+/g, " ").toUpperCase(),
+        fuelType: d.fuelType, usage: boat ? "" : d.usage, zone: boat ? "interior" : d.zone, ownerRole: d.role, annualKm: boat ? null : toInt(d.annualKm) });
+      persist(); go("detail"); return toast("Cambios guardados");
+    }
+    case "reg-open": return openReg(S.detail.id, (b.dataset.items || "").split(",").filter(Boolean));
+    case "reg-cancel":
+      if (!S.reg.lines.length) { S.reg = null; return go("detail"); }
+      S.dialog = { title: "¿Salir sin guardar?", body: "Se perderán los trabajos que has marcado.", no: "Seguir", yes: "Salir", onYes: () => { S.reg = null; go("detail"); } };
+      return render();
+    case "reg-toggle": {
+      const r = S.reg, i = planFor(vehicleById(r.vid)).find((x) => x.id === b.dataset.id);
+      r.lines = r.lines.some((l) => l.key === i.id) ? r.lines.filter((l) => l.key !== i.id) : [...r.lines, { key: i.id, itemId: i.id, name: i.name, icon: i.icon, cost: "", photos: [] }];
+      r.error = null; return render();
+    }
+    case "reg-pending": {
+      const r = S.reg, v = vehicleById(r.vid), keep = Object.fromEntries(r.lines.map((l) => [l.key, l]));
+      r.lines = [...healthOf(v).alerts.map((s) => keep[s.item.id] || { key: s.item.id, itemId: s.item.id, name: s.item.name, icon: s.item.icon, cost: "", photos: [] }), ...r.lines.filter((l) => l.itemId === "otro")];
+      return render();
+    }
+    case "reg-none": S.reg.lines = []; return render();
+    case "reg-mode": S.reg.costMode = b.dataset.m; S.reg.error = null; render(); return b.dataset.m === "total" && app.querySelector("#r-total")?.focus();
+    case "reg-custom": { let n = 1; while (S.reg.lines.some((l) => l.key === "otro-" + n)) n++; S.reg.lines.push({ key: "otro-" + n, itemId: "otro", name: "", icon: "🔧", cost: "", photos: [] }); render(); return app.querySelector("#rn-otro-" + n)?.focus(); }
+    case "reg-delline": S.reg.lines = S.reg.lines.filter((l) => l.key !== b.dataset.key); return render();
+    case "reg-delphoto": { const l = S.reg.lines.find((x) => x.key === b.dataset.key); l.photos.splice(Number(b.dataset.i), 1); return render(); }
+    case "reg-save": {
+      const r = S.reg, v = vehicleById(r.vid), err = regValidate(r, v);
+      if (err) { r.error = err; return render(); }
+      r.busy = true; r.error = null; render();
+      later(700, () => {
+        const t = String(r.km).replace(/[.\s]/g, ""), km = v.type === "barco" || !t ? null : Number(t);
+        const costs = regCosts(r, v), estimated = regEstimated(r);
+        for (const l of r.lines) v.records.push({ id: "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), itemId: l.itemId, name: l.itemId === "otro" ? l.name.trim() : undefined, date: r.date, km, cost: costs[l.key] ?? null, estimated: estimated && costs[l.key] != null, notes: r.notes.trim() || null, photos: l.photos });
+        if (km != null && !v.kmLogs.some((x) => x.date === r.date && x.km === km)) { v.kmLogs.push({ date: r.date, km }); if (v.currentKm == null || km > v.currentKm) v.currentKm = km; }
+        const n = r.lines.length; S.reg = null;
+        const saved = persist(); go("detail");
+        toast(saved ? `✓ ${plural(n, "mantenimiento registrado", "mantenimientos registrados")}` : "Registrado, pero las fotos no caben en el almacenamiento del navegador: se perderán al recargar.");
+      });
+      return;
+    }
+    case "fuel-type": S.fuel.type = b.dataset.t; S.fuel.error = null; return render();
+    case "fuel-full": S.fuel.full = !S.fuel.full; return render();
+    case "fuel-cancel": {
+      const fu = S.fuel;
+      if (!(fu.km || fu.q || fu.p || fu.t || fu.station)) { S.fuel = null; return go("detail"); }
+      S.dialog = { title: "¿Salir sin guardar?", body: `Se perderán los datos de ${fu.type === "Electricidad" ? "esta recarga" : "este repostaje"}.`, no: "Seguir", yes: "Salir", onYes: () => { S.fuel = null; go("detail"); } };
+      return render();
+    }
+    case "fuel-save": {
+      const fu = S.fuel, v = vehicleById(fu.vid), err = fuelValidate(fu, v);
+      if (err) { fu.error = err; return render(); }
+      fu.busy = true; fu.error = null; render();
+      later(600, () => {
+        const t = String(fu.km).replace(/[.\s]/g, ""), km = v.type === "barco" || !t ? null : Number(t);
+        let q = fuVal(fu, "q"), p = fuVal(fu, "p"), tot = fuVal(fu, "t");
+        const d = fuDerived(fu);   // el calculado se recalcula con precisión, como en SQL
+        if (d === "q") q = Math.round(tot / p * 1000) / 1000; if (d === "p") p = Math.round(tot / q * 1000) / 1000; if (d === "t") tot = Math.round(q * p * 100) / 100;
+        v.fuelLogs.push({ id: "f" + Date.now().toString(36), date: fu.date, km, liters: q, price: p, total: tot, full: fu.full, fuelType: fu.type, station: fu.station.trim() || null });
+        if (km != null && !v.kmLogs.some((x) => x.date === fu.date && x.km === km)) { v.kmLogs.push({ date: fu.date, km }); if (v.currentKm == null || km > v.currentKm) v.currentKm = km; }
+        const ev = fu.type === "Electricidad"; S.fuel = null; persist(); S.detail.tab = "combustible"; go("detail");
+        toast(ev ? "✓ Recarga registrada" : "✓ Repostaje registrado");
+      });
+      return;
+    }
+    case "fdel": {
+      const v = vehicleById(S.detail.id), f = v.fuelLogs.find((x) => x.id === b.dataset.id);
+      S.dialog = { title: isEv(f) ? "Eliminar recarga" : "Eliminar repostaje", body: `¿Seguro que quieres eliminar ${isEv(f) ? "la recarga" : "el repostaje"} del ${fmtDate(f.date)}${f.total ? ` (${money(f.total)})` : ""}?`, no: "Cancelar", yes: "Eliminar",
+        onYes: () => { v.fuelLogs = v.fuelLogs.filter((x) => x.id !== f.id); persist(); render(); toast(isEv(f) ? "Recarga eliminada" : "Repostaje eliminado"); } };
+      return render();
+    }
+    case "share-open": S.detail.menu = false; S.share = { vid: S.detail.id }; return go("share");
+    case "share-back": S.share = null; return go("detail");
+    case "share-copy": return copyText(vehicleById(S.share.vid).invite.code, `Código ${prettyCode(vehicleById(S.share.vid).invite.code)} copiado`);
+    case "share-send": {
+      const v = vehicleById(S.share.vid), text = shareMessage(v, v.invite);
+      if (navigator.share) { navigator.share({ title: `Acceso al ${v.brand} ${v.model}`, text }).catch(() => {}); return; }
+      return copyText(text, "Mensaje copiado. Pégalo en WhatsApp o en un correo.");
+    }
+    case "share-regen": {
+      const v = vehicleById(S.share.vid);
+      S.dialog = { title: "Generar código nuevo", body: "El código actual dejará de funcionar. Quien ya tiene acceso lo mantiene.", no: "Cancelar", yes: "Generar",
+        onYes: () => { v.invite = null; inviteOf(v); render(); toast("Código nuevo generado"); } };
+      return render();
+    }
+    case "share-remove": {
+      const v = vehicleById(S.share.vid), m = v.members.find((x) => x.email === b.dataset.email);
+      S.dialog = { title: "Quitar acceso", body: `${m.name} dejará de ver el ${v.brand} ${v.model}. Lo que haya registrado se queda en el vehículo.`, no: "Cancelar", yes: "Quitar acceso",
+        onYes: () => { v.members = v.members.filter((x) => x !== m); persist(); render(); toast(`${m.name} ya no tiene acceso`); } };
+      return render();
+    }
+    case "share-leave": leaveDialog(vehicleById(S.share.vid)); return render();
+    case "join-open": S.menu = false; S.join = { code: "", role: "regular", tried: false, error: null, busy: false }; return go("join");
+    case "join-back": S.join = null; return go("home");
+    case "join-role": S.join.role = b.dataset.r; return render();
+    case "join-scan": return toast("En la demo no hay cámara: escribe el código. En la app se abre el escáner.");
+    case "join-go": {
+      const j = S.join; j.tried = true; j.error = null;
+      if (codeError(j.code)) return render();
+      j.busy = true; render();
+      later(600, () => {
+        j.busy = false;
+        const fails = (DB.joinFails ||= {})[S.user] = (DB.joinFails[S.user] || []).filter((t) => Date.now() - t < 36e5);
+        if (fails.length >= 10) { j.error = "Demasiados intentos fallidos. Prueba de nuevo dentro de una hora."; return render(); }
+        let found = null;
+        for (const [email, a] of Object.entries(DB.accounts)) for (const v of a.vehicles) if (v.invite?.code === j.code) found = { email, v };
+        if (!found || new Date(found.v.invite.expires) <= new Date()) {
+          fails.push(Date.now()); persist();
+          j.error = found ? "Este código ha caducado. Pide uno nuevo al propietario." : "Código no válido. Revisa que esté bien escrito."; return render();
+        }
+        const v = found.v, name = `${v.brand} ${v.model}`;
+        if (found.email === S.user) { j.error = "Este vehículo ya es tuyo"; return render(); }
+        v.members ||= [];
+        const had = v.members.some((m) => m.email === S.user);
+        if (!had && v.members.length >= 20) { j.error = "Este vehículo ya está compartido con el máximo de 20 personas"; return render(); }
+        if (!had) v.members.push({ email: S.user, name: account().name || S.user.split("@")[0], role: j.role, joinedAt: iso(today0()) });
+        persist(); S.join = null; openDetail(v.id);
+        toast(had ? `Ya tenías acceso al ${name}` : `✓ Ya puedes ver el ${name}`);
+      });
+      return;
+    }
+    case "hopen": S.recSheet = { id: b.dataset.id }; return render();
+    case "recsheet-close":
+      if (b.classList.contains("sheet-scrim") && e.target !== b) return; // clic dentro de la hoja
+      S.recSheet = null; return render();
+    case "dialog-no": S.dialog = null; return render();
+    case "dialog-yes": { const f = S.dialog.onYes; S.dialog = null; return f(); }
+  }
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (S.dialog) { S.dialog = null; render(); } else if (S.sheet) { S.sheet = null; render(); } else if (S.menu) { S.menu = false; render(); } else if (S.recSheet) { S.recSheet = null; render(); } else if (S.detail?.menu) { S.detail.menu = false; render(); }
+});
+document.getElementById("reset-demo").addEventListener("click", () => {
+  DB = freshDB(); persist(); Object.assign(S, { slide: 0, user: null, workshop: false, wiz: null, sheet: null, dialog: null, resetFor: null, detail: null, edit: null, reg: null, fuel: null, share: null, join: null, recSheet: null }); go("onboarding");
+});
+document.getElementById("toggle-app-theme").addEventListener("click", () => { S.dark = !S.dark; render(); });
+render();
+</script>
+</body>
+</html>
