@@ -1,0 +1,50 @@
+# Copia de seguridad semanal de la base de datos de Supabase.
+# Se guarda CIFRADA como «artefacto» de Actions durante 90 días.
+# Para descifrarla:  gpg -d copia.tar.gz.gpg > copia.tar.gz
+name: copia-de-seguridad
+
+on:
+  schedule:
+    - cron: '17 3 * * 1'   # lunes a las 03:17 UTC
+  workflow_dispatch:        # y cuando quieras, desde la pestaña Actions
+
+jobs:
+  copia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Comprobar secretos
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "Faltan los secretos SUPABASE_DB_URL y/o BACKUP_PASSPHRASE"; exit 1
+          fi
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Volcar roles, estructura y datos
+        run: |
+          mkdir copia
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f copia/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f copia/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f copia/data.sql --use-copy --data-only -x "storage.buckets_vectors" -x "storage.vector_indexes"
+          ls -la copia
+
+      - name: Comprimir y cifrar
+        run: |
+          FECHA=$(date -u +%Y-%m-%d)
+          tar czf copia.tar.gz copia
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+              --symmetric --cipher-algo AES256 -o "mantenitrack-$FECHA.tar.gz.gpg" copia.tar.gz
+          rm -rf copia copia.tar.gz
+          echo "FECHA=$FECHA" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: copia-mantenitrack-${{ env.FECHA }}
+          path: mantenitrack-*.tar.gz.gpg
+          retention-days: 90
